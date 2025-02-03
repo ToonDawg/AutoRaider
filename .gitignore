@@ -1,0 +1,5 @@
+DQconfig.ini
+PARconfig.ini
+logs
+*/*/__pycache__
+*/__pycache__
