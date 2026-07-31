@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Any
 import pystray
 from PIL import Image
-import os
+from pathlib import Path
 
 import threading
 
@@ -67,11 +67,11 @@ class MainGUI:
 
     def _setup_tray_icon(self) -> None:
          # Load the icon - using the RaidShard icon
-        icon_path = os.path.join("assets", "RaidShard.ico")
-        if not os.path.exists(icon_path):
-            icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "RaidShard.ico")
+        icon_path = Path("assets") / "RaidShard.ico"
+        if not icon_path.exists():
+            icon_path = Path(__file__).resolve().parent.parent / "assets" / "RaidShard.ico"
 
-        if os.path.exists(icon_path):
+        if icon_path.exists():
             image = Image.open(icon_path)
         else:
             image = Image.new('RGB', (64, 64), 'white')

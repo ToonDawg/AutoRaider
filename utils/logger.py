@@ -1,15 +1,15 @@
 import logging
-import os
+from pathlib import Path
 from datetime import datetime
 
-def setup_logger(log_directory="logs"):
-    if not os.path.exists(log_directory):
-        os.makedirs(log_directory)
+def setup_logger(log_directory: str = "logs") -> logging.Logger:
+    log_dir_path = Path(log_directory)
+    log_dir_path.mkdir(parents=True, exist_ok=True)
 
-    log_file = os.path.join(log_directory, f"log_{datetime.now().strftime('%Y-%m-%d')}.log")
+    log_file = log_dir_path / f"log_{datetime.now().strftime('%Y-%m-%d')}.log"
 
     logging.basicConfig(
-        filename=log_file,
+        filename=str(log_file),
         format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S",
         encoding='utf-8',
         level=logging.DEBUG

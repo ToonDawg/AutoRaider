@@ -4,6 +4,7 @@ import os
 import platform
 import subprocess
 import time
+from pathlib import Path
 import threading
 import pygetwindow as gw
 import sys
@@ -69,15 +70,15 @@ class AutoRaider:
 
     def get_asset_path(self):
         try:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
+            current_dir = Path(__file__).resolve().parent
             while True:
-                asset_path = os.path.join(current_dir, "assets")
-                if os.path.exists(asset_path):
+                asset_path = current_dir / "assets"
+                if asset_path.exists():
                     self.logger.info(f"Assets folder found: {asset_path}")
-                    return asset_path
+                    return str(asset_path)
 
                 # Move up one directory level
-                new_dir = os.path.dirname(current_dir)
+                new_dir = current_dir.parent
                 if new_dir == current_dir:
                     self.logger.error("Assets folder not found.")
                     sys.exit(1)
@@ -89,14 +90,16 @@ class AutoRaider:
     def find_raid_path(self):
         try:
             appdata_local = os.getenv("LOCALAPPDATA")
-            base_path = os.path.join(appdata_local, "PlariumPlay", "StandAloneApps", "raid-shadow-legends")
+            if not appdata_local:
+                raise ValueError("LOCALAPPDATA environment variable not found")
+            base_path = Path(appdata_local) / "PlariumPlay" / "StandAloneApps" / "raid-shadow-legends"
 
             # Recursively search for Raid.exe
             for root, dirs, files in os.walk(base_path, topdown=True):
                 if "Raid.exe" in files:
-                    raid_path = os.path.join(root, "Raid.exe")
+                    raid_path = Path(root) / "Raid.exe"
                     self.logger.info(f"Raid executable found at: {raid_path}")
-                    return raid_path
+                    return str(raid_path)
 
             self.logger.error("Raid executable not found. Please ensure it is installed.")
             sys.exit(1)
@@ -119,9 +122,13 @@ class AutoRaider:
 
     def open_raid(self):
         try:
+            appdata_local = os.getenv("LOCALAPPDATA")
+            if not appdata_local:
+                raise ValueError("LOCALAPPDATA environment variable not found")
+            plarium_play_path = Path(appdata_local) / "PlariumPlay" / "PlariumPlay.exe"
             subprocess.Popen(
                 [
-                    os.path.join(os.getenv("LOCALAPPDATA"), "PlariumPlay\\PlariumPlay.exe"),
+                    str(plarium_play_path),
                     "--args",
                     "-gameid=101",
                     "-tray-start",

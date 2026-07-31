@@ -1,32 +1,40 @@
 import time
 import pyautogui
-import os
+import pyscreeze
 import sys
-import pytesseract
-from PIL import ImageGrab
+from pathlib import Path
+from typing import Optional, List, Tuple, Any
 from utils.exceptions import CancellationException
+from utils.constants import (
+    CENTER_X, CENTER_Y, DEFAULT_SWIPE_DISTANCE, 
+    DEFAULT_SWIPE_DURATION, DEFAULT_CONFIDENCE,
+    DEFAULT_WAIT_TIMEOUT, DEFAULT_WAIT_INTERVAL
+)
+from utils.ocr_handler import OCRHandler
 
 class ClickHandler:
     """A reusable class for handling click-related logic in an auto-clicker app."""
 
-    def __init__(self, logger):
+    def __init__(self, logger: Any):
         """
         Initialize the ClickHandler.
 
         Args:
             logger (logging.Logger): Logger instance for logging actions and errors.
-            asset_path (str): Base path where the image assets are stored.
         """
         self.logger = logger
-        self.steps = {}
-        self.asset_path = self.get_asset_path()
-        self.cancel_flag = False
+        self.steps: dict[str, str] = {}
+        self.asset_path: Optional[Path] = self.get_asset_path()
+        self.cancel_flag: bool = False
+        self.ocr_handler = OCRHandler(logger)
 
-    def _get_image_path(self, image_name):
+    def _get_image_path(self, image_name: str) -> str:
         """Helper method to construct the full path for an image."""
-        return os.path.join(self.asset_path, image_name)
+        if not self.asset_path:
+            return image_name
+        return str(self.asset_path / image_name)
 
-    def _locate_image(self, image_name, description=""):
+    def _locate_image(self, image_name: str, description: str = "") -> Optional[pyautogui.Point | pyautogui.Box]:
         """
         Locate an image on the screen.
 
@@ -38,14 +46,18 @@ class ClickHandler:
             pyautogui.Box or None: The location of the image if found, otherwise None
         """
         image_path = self._get_image_path(image_name)
-        location = pyautogui.locateOnScreen(image_path, confidence=0.8)
-        if location:
-             self.logger.debug(f"Located {description} at: {location}.")
-        else:
-             self.logger.debug(f"Could not locate {description}.")
-        return location
+        try:
+            location = pyautogui.locateOnScreen(image_path, confidence=DEFAULT_CONFIDENCE)
+            if location:
+                self.logger.debug(f"Located {description} at: {location}.")
+            else:
+                self.logger.debug(f"Could not locate {description}.")
+            return location
+        except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
+            self.logger.debug(f"Could not locate {description}.")
+            return None
         
-    def wait_for_image(self, image_name, description="", timeout=30, check_interval=2):
+    def wait_for_image(self, image_name: str, description: str = "", timeout: int = DEFAULT_WAIT_TIMEOUT, check_interval: int = DEFAULT_WAIT_INTERVAL) -> bool:
         """
         Wait until an image appears on the screen.
 
@@ -74,7 +86,7 @@ class ClickHandler:
         self.logger.error(f"{description} did not appear after {timeout} seconds.")
         return False
           
-    def click_image(self, image_name, description="", retries=1, delay=1):
+    def click_image(self, image_name: str, description: str = "", retries: int = 1, delay: int = 1) -> bool:
         """
         Locate an image on the screen and click it.
 
@@ -109,7 +121,7 @@ class ClickHandler:
         self.logger.error(f"Failed to click on {description} after {retries} retries.")
         return False
         
-    def wait_until_disappears(self, image_name, description="", timeout=30, check_interval=2):
+    def wait_until_disappears(self, image_name: str, description: str = "", timeout: int = DEFAULT_WAIT_TIMEOUT, check_interval: int = DEFAULT_WAIT_INTERVAL) -> bool:
         """
         Wait until an image disappears from the screen.
 
@@ -133,7 +145,7 @@ class ClickHandler:
             if self.cancel_flag:
                 self.logger.info("Task cancellation requested during wait_until_disappears.")
                 raise CancellationException("Task cancelled by user.")
-            if not pyautogui.locateOnScreen(image_path, confidence=0.8):
+            if not pyautogui.locateOnScreen(image_path, confidence=DEFAULT_CONFIDENCE):
                 self.logger.info(f"{description} has disappeared from the screen.")
                 return True
 
@@ -143,15 +155,15 @@ class ClickHandler:
         self.logger.error(f"{description} did not disappear after {timeout} seconds.")
         return False
 
-    def is_multi_battle_active(self):
+    def is_multi_battle_active(self) -> bool:
         """Check if a multi-battle or loading screen is active."""
         
         return any(
             self._locate_image(image, "Checking for multi battle")
-            for image in ["inBattle.png", "turnOffMultiBattle.png", "loadingScreen.png", "inBattle.png", "turnOffMultiBattle.png", "loadingScreen.png"] # Wanted to do retries for the weird minor states it can be found on. But whatever.
+            for image in ["inBattle.png", "turnOffMultiBattle.png", "loadingScreen.png"]
         )
         
-    def is_battle_active(self):
+    def is_battle_active(self) -> bool:
         """Check if a battle or loading screen is active."""
         
         return any(
@@ -159,7 +171,7 @@ class ClickHandler:
             for image in ["inBattle.png", "loadingScreen.png"]
         )
 
-    def wait_for_multi_battle_completion(self):
+    def wait_for_multi_battle_completion(self) -> bool:
         """Wait until the multi-battle is complete."""
         time.sleep(5)
 
@@ -180,7 +192,7 @@ class ClickHandler:
             self.logger.warning("Unexpected state: No in-battle or complete image detected. Retrying...")
             time.sleep(2)
             
-    def wait_for_battle_completion(self):
+    def wait_for_battle_completion(self) -> bool:
         """Wait until the battle is complete.""" 
         if not self.is_multi_battle_active():
             self.logger.info("No active battle detected.")
@@ -199,7 +211,7 @@ class ClickHandler:
             self.logger.warning("Unexpected state: No in-battle or complete image detected. Retrying...")
             time.sleep(2)
         
-    def swipe_left(self, distance=600, duration=0.3):
+    def swipe_left(self, distance: int = DEFAULT_SWIPE_DISTANCE, duration: float = DEFAULT_SWIPE_DURATION) -> None:
         """
         Swipe the screen to the left.
 
@@ -209,11 +221,11 @@ class ClickHandler:
         """
 
         self.logger.info(f"Swiping left by {distance} pixels over {duration} seconds.")
-        pyautogui.moveTo(960, 540)
+        pyautogui.moveTo(CENTER_X, CENTER_Y)
         pyautogui.dragRel(-distance, 0, duration=duration)
         time.sleep(1)  # Add a small delay
 
-    def swipe_right(self, distance=600, duration=0.3):
+    def swipe_right(self, distance: int = DEFAULT_SWIPE_DISTANCE, duration: float = DEFAULT_SWIPE_DURATION) -> None:
         """
         Swipe the screen to the right.
 
@@ -224,11 +236,11 @@ class ClickHandler:
         
 
         self.logger.info(f"Swiping right by {distance} pixels over {duration} seconds.")
-        pyautogui.moveTo(960, 540)
+        pyautogui.moveTo(CENTER_X, CENTER_Y)
         pyautogui.dragRel(distance, 0, duration=duration)
         time.sleep(1)
 
-    def swipe_up(self, distance=400, duration=0.3, moveFromX=960, moveFromY=540):
+    def swipe_up(self, distance: int = 400, duration: float = DEFAULT_SWIPE_DURATION, moveFromX: int = CENTER_X, moveFromY: int = CENTER_Y) -> None:
         """
         Swipe the screen upwards.
 
@@ -242,7 +254,7 @@ class ClickHandler:
         pyautogui.dragRel(0, -distance, duration=duration)
         time.sleep(1)
 
-    def swipe_down(self, distance=400, duration=0.3):
+    def swipe_down(self, distance: int = 400, duration: float = DEFAULT_SWIPE_DURATION) -> None:
         """
         Swipe the screen downwards.
 
@@ -252,19 +264,21 @@ class ClickHandler:
         """
 
         self.logger.info(f"Swiping down by {distance} pixels over {duration} seconds.")
-        pyautogui.moveTo(960, 540)
+        pyautogui.moveTo(CENTER_X, CENTER_Y)
         pyautogui.dragRel(0, distance, duration=duration)
         time.sleep(1)
         
-    def delete_popup(self):
+    def delete_popup(self) -> None:
         self.logger.info("Attempting to close any pop-up ads.")
-        exit_add_image = os.path.join(self.asset_path, "exitAdd.png")
+        if not self.asset_path:
+            return
+        exit_add_image = str(self.asset_path / "exitAdd.png")
         self.logger.debug(f"Looking for exitAdd.png at: {exit_add_image}")
         max_attempts = 5
         attempts = 0
         while attempts < max_attempts:
             try:
-                location = pyautogui.locateOnScreen(exit_add_image, confidence=0.8)
+                location = pyautogui.locateOnScreen(exit_add_image, confidence=DEFAULT_CONFIDENCE)
                 if location:
                     adx, ady = pyautogui.center(location)
                     pyautogui.click(adx, ady)
@@ -274,14 +288,17 @@ class ClickHandler:
                 else:
                     self.logger.info("No pop-up ads found.")
                     break  # Exit the loop since no ad is found
+            except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
+                break
             except Exception as e:
+                self.logger.error(f"Unexpected error when closing pop-up ad: {e}")
                 break  # Exit the loop or handle as needed
         if attempts >= max_attempts:
             self.logger.warning("Reached maximum attempts to close pop-up ads.")
         else:
             self.logger.info("No pop-up ads found or all ads closed.")
 
-    def click(self, coordinates, description=""):
+    def click(self, coordinates: Tuple[int, int], description: str = "") -> None:
         """
         Clicks at the given screen coordinates.
 
@@ -297,11 +314,14 @@ class ClickHandler:
             # Move the mouse to the coordinates and click
             pyautogui.moveTo(coordinates[0], coordinates[1])
             pyautogui.click()
+        except pyautogui.FailSafeException as e:
+            self.logger.error(f"FailSafe triggered clicking at {coordinates}: {e}")
+            raise
         except Exception as e:
             self.logger.error(f"Error clicking at {coordinates}: {e}")
             raise
 
-    def back_to_bastion(self):
+    def back_to_bastion(self) -> None:
         try:
             self.logger.info("Navigating back to Bastion.")
             
@@ -339,7 +359,7 @@ class ClickHandler:
 
 
             
-    def press_key(self, key, description=""):
+    def press_key(self, key: str, description: str = "") -> None:
         """
         Simulates a key press.
 
@@ -354,36 +374,42 @@ class ClickHandler:
 
             # Simulate key press
             pyautogui.press(key)
+        except pyautogui.FailSafeException as e:
+            self.logger.error(f"FailSafe triggered pressing key '{key}': {e}")
+            raise
         except Exception as e:
             self.logger.error(f"Error pressing key '{key}': {e}")
             raise
-    def _locate_all_buttons(self, image_name):
+    def _locate_all_buttons(self, image_name: str) -> List[pyautogui.Point]:
         """Finds all visible battle buttons on the screen and returns their centers."""
         image_path = self._get_image_path(image_name)
-        return [pyautogui.center(btn) for btn in pyautogui.locateAllOnScreen(image_path, confidence=0.8)]
+        try:
+            return [pyautogui.center(btn) for btn in pyautogui.locateAllOnScreen(image_path, confidence=DEFAULT_CONFIDENCE)]
+        except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
+            return []
 
-    def get_asset_path(self):
+    def get_asset_path(self) -> Optional[Path]:
         try:
             # Start with the directory of the current script
-            current_dir = os.path.dirname(os.path.abspath(__file__))
+            current_dir = Path(__file__).resolve().parent
             while True:
                 # Construct the path to the assets folder
-                self.asset_path = os.path.join(current_dir, 'assets')
+                asset_path_candidate = current_dir / 'assets'
 
                 # Check if the assets path exists
-                if os.path.exists(self.asset_path):
+                if asset_path_candidate.exists() and asset_path_candidate.is_dir():
                     self.steps["Asset_path"] = "True"
-                    self.logger.info(f"Assets folder found at {self.asset_path}")
-                    return self.asset_path
+                    self.logger.info(f"Assets folder found at {asset_path_candidate}")
+                    return asset_path_candidate
 
                 # Move up one directory level
-                new_dir = os.path.dirname(current_dir)
+                new_dir = current_dir.parent
                 if new_dir == current_dir:
                     # We are at the root directory and didn't find the assets folder
                     self.logger.error("Assets folder not found.")
                     self.steps["Asset_path"] = "False"
-                    if self.folders_for_exe() == False:
-                        self.logging.error("Could not find the assets folder. This folder contains all of the images needed for this program to use. It must be in the same folder as this program.")
+                    if getattr(self, 'folders_for_exe', lambda: True)() == False:
+                        self.logger.error("Could not find the assets folder. This folder contains all of the images needed for this program to use. It must be in the same folder as this program.")
                         sys.exit(1)
                     return None
                 else:
@@ -392,7 +418,7 @@ class ClickHandler:
             self.logger.error(f"Error in get_asset_path: {e}")
             sys.exit(1)
             
-    def text_on_screen_contains(self, target_text, region=None):
+    def text_on_screen_contains(self, target_text: str, region: Optional[Tuple[int, int, int, int]] = None) -> bool:
         """
         Checks if the target text is present on the screen using OCR.
         
@@ -403,22 +429,9 @@ class ClickHandler:
         Returns:
             bool: True if the target text is found, False otherwise.
         """
-        try:
-            # Capture the screen or the specified region
-            screen = ImageGrab.grab(bbox=region) if region else ImageGrab.grab()
-
-            # Perform OCR on the captured screen
-            ocr_result = pytesseract.image_to_string(screen)
-
-            # Check if the target text exists in the OCR result
-            if target_text.lower() in ocr_result.lower():
-                return True
-            return False
-        except Exception as e:
-            print(f"Error in text_on_screen_contains: {e}")
-            return False
+        return self.ocr_handler.text_on_screen_contains(target_text, region)
     
-    def scroll_to_top(self):
+    def scroll_to_top(self) -> None:
         """Scroll to the top of the Doom Tower screen."""
         self.logger.info("Scrolling to the top of the Doom Tower screen.")
         for _ in range(3):  # Adjust range based on screen length
