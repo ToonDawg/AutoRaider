@@ -87,6 +87,29 @@ def test_engine_run_is_importable_without_windows_deps():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_hitl_repair_does_not_import_tkinter():
+    """hitl.repair is the pure core; CustomTkinter lives only in hitl.app.
+
+    _tkinter is not available in this Python at all, so the suite must be
+    able to exercise repairs without it — same lesson as pyautogui / pygetwindow.
+    """
+    code = (
+        "import sys\n"
+        "import hitl.repair  # noqa: F401\n"
+        "assert 'tkinter' not in sys.modules, sorted(sys.modules)\n"
+        "assert '_tkinter' not in sys.modules, sorted(sys.modules)\n"
+        "assert 'customtkinter' not in sys.modules, sorted(sys.modules)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        env=_subprocess_env(),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def _param_names(func_def: ast.FunctionDef) -> list[str]:
     names = [a.arg for a in func_def.args.args]
     if names and names[0] == "self":

@@ -17,7 +17,7 @@ Phase 2 is small on purpose. Keep it that way.
 3. **Order is load-bearing: dump, then recover.** Write the dump *before* `back_to_bastion()` / `delete_popup()`. ESC spam destroys the evidence if you reverse them. Put that ordering in `engine/run.py` and assert it with a recording fake (PR 2.2 acceptance).
 4. **Dumping must never take down the run.** Wrap `write_crash_dump` in try/except; return `None` and log. A broken dump must not block Bastion recovery.
 5. **Stay out of `Modules/` and `utils/`.** Phase 2 only adds `engine/dump.py`, wires it from `engine/run.py`, and adds `tests/test_dump.py`. Do not "fix" `back_to_bastion()`'s unbounded ESC loop as a drive-by — that is a separate ticket (noted at the bottom of this file).
-6. **Do not wait for capture 11 to start coding.** PR 2.1/2.2 are fully testable with a synthetic image. Capture 11 unblocks Phase 3's viewer, not Phase 2's generator. Parallelize: implement dumps on macOS while someone on Windows grabs 02/10/11 and runs the Phase 1 live smoke.
+6. **Do not wait for capture 11 to start coding.** PR 2.1/2.2 are fully testable with a synthetic image. Capture 11 is a realism check on Phase 3's finished tool, not a gate on Phase 2's generator (and not a gate on Phase 3 either — see [Ticket 3](./Ticket_3_Phase3_HITL.md)). Parallelize: implement dumps on macOS while someone on Windows grabs 02/10/11 and runs the Phase 1 live smoke.
 7. **Definition of done for this ticket.** `ABORTED` and `STEP_LIMIT` write paired `.png` + `.json` under `logs/dumps/`; `COMPLETED` writes nothing; dump-before-recover is tested; live failure (when available) leaves a usable stuck-screen PNG.
 
 ## Scope
@@ -146,11 +146,11 @@ The region is resolved **once**, in `main()`, and the same tuple feeds the start
 
 ## Windows follow-ups
 
-Everything below needs the game machine. Nothing here blocks Phase 3's implementation — capture 11 does, and it is the first item.
+Everything below needs the game machine. Nothing here blocks Phase 3's implementation — capture 11 is a realism check on the finished HITL tool, not a gate (see [Ticket 3](./Ticket_3_Phase3_HITL.md)).
 
 ### 1. Capture 11 — and the shortcut to getting it
 
-**A live failed v2 run now produces capture 11 as a side effect.** The dump PNG *is* "any screen where the bot would be lost", captured at 900×600 from the same rect the matcher searched. That closes PR 2.2 acceptance #2 and the [capture 11](./Screenshots_Required.md) blocker in one run, and the result is more representative than a posed stand-in.
+**A live failed v2 run now produces capture 11 as a side effect.** The dump PNG *is* "any screen where the bot would be lost", captured at 900×600 from the same rect the matcher searched. That closes PR 2.2 acceptance #2 and delivers the [capture 11](./Screenshots_Required.md) realism check for the HITL tool in one run, and the result is more representative than a posed stand-in.
 
 To force a failure deliberately, run the sequence from somewhere other than the Bastion:
 

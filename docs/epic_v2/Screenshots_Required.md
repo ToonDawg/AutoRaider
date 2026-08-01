@@ -1,7 +1,7 @@
 # Screenshots Required
 
 **For:** whoever has access to the game machine.
-**Why:** the developer implementing [AutoRaider v2](./Epic_AutoRaider_v2.md) cannot run the game. Without these captures, PR 1.4 cannot be verified and Phase 3 cannot be built at all.
+**Why:** the developer implementing [AutoRaider v2](./Epic_AutoRaider_v2.md) cannot run the game. Without these captures, PR 1.4 cannot be fully verified. Phase 3 no longer needs capture 11 to start — it generates its fixture from capture 05 — but capture 11 remains the realism check on the finished HITL tool.
 
 ## Delivery status (2026-08-01)
 
@@ -138,4 +138,4 @@ So a green offline suite means "the assets are not stale and the graph is wired 
 
 ## If some captures cannot be supplied
 
-Say which ones. Phase 1's core (PRs 1.1–1.3) still ships — it is tested against a hand-written fake and needs no images. What is lost is any confidence that the asset crops are still valid, which means the first live run becomes the first real test. Phase 3 has no fallback: without captures there is nothing to display, nothing to crop, and nothing to verify against.
+Say which ones. Phase 1's core (PRs 1.1–1.3) still ships — it is tested against a hand-written fake and needs no images. What is lost is any confidence that the asset crops are still valid, which means the first live run becomes the first real test. Phase 3 is built and tested against a dump generated from capture 05; what you lose without capture 11 is only the realism check on an unanticipated screen.

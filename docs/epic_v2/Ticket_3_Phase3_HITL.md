@@ -1,5 +1,7 @@
 # Phase 3: Human-In-The-Loop Authoring UI
 
+**Status: DONE (offline) — 2026-08-01.** PRs 3.1–3.3 shipped. Suite: `55 passed, 2 skipped` on macOS with no game (was 43/2 after Phase 2). The pure repair core is tested; the CustomTkinter window is written but **unverified** on this machine (`_tkinter` missing). See [Windows follow-ups](#windows-follow-ups) below.
+
 **Goal:** repair a broken image target by re-cropping it from the crash screenshot, without opening an editor.
 
 **Depends on:** Phase 2 (crash dumps exist and record `config_path` + `failed_node`). **Met** — `engine/dump.py` writes both fields; the exact file shape is in [Ticket 2 → PR 2.1](./Ticket_2_Phase2_Telemetry.md#files).
@@ -22,12 +24,11 @@ Work through what each PR actually needs:
 
 Nothing on that list requires a screen the bot was genuinely lost on. **Generate the fixture instead of waiting for it**, using the code that already exists:
 
-- `ScreenshotScreen` (PR 1.4) drives the engine against `05_arena_opponent_list.png`.
-- Point a copy of the config's `select_opponent` target at an asset that will not match.
-- `run_sequence` (PR 2.2) reaches `ABORTED`, and `write_crash_dump` (PR 2.1) writes a real, self-consistent dump pair whose PNG is capture 05.
+- `ScreenshotScreen` (PR 1.4) drives the engine against the replay chain **`01 → 03 → 04 → 05`**. Capture 05 alone is not enough: the sequence starts at `close_popup_ads`, and `battleBTN.png` is not on the opponent list, so a single-frame fixture aborts at `open_battle_menu` instead of `select_opponent`.
+- Point a copy of the config's `select_opponent` target at an asset that will not match on capture 05 (e.g. `bastion.png` — it exists, so the config still loads, but will never locate).
+- `run_sequence` (PR 2.2) reaches `ABORTED` at `select_opponent`, and `write_crash_dump` (PR 2.1) writes a real, self-consistent dump pair whose PNG is capture 05.
 
 That fixture is worth more than a hand-written JSON because the real writer produced it — if the dump format drifts, the Phase 3 tests break, which is exactly what you want. Build it as a pytest fixture, not a checked-in artifact.
-
 What capture 11 still buys, and why it is worth asking for anyway: it is the only way to confirm the tool helps in the case it exists to serve — a screen with something *unanticipated* on it. Treat that as a review step once the capture arrives, not as a gate on writing code. And note the shortcut in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups): a deliberately-failed live run now produces capture 11 by itself.
 
 ### 2. Build it inside-out: 3.3, then 3.2, then 3.1
@@ -79,6 +80,20 @@ Acceptance 3.3 #4 wants an invalid result to leave the file untouched. Read the 
 
 Acceptance 3.3 #2 says formatting elsewhere is byte-identical. State it as a test that is impossible to fudge: after a repair, the diff against the original is **exactly one line changed**. That single assertion covers comment preservation, `note:` survival, key order, quoting style, and indentation all at once — and it is the reason `ruamel.yaml` is mandated over PyYAML.
 
+**Verified trap:** a naive `YAML()` round-trip of `configs/arena_v2.yaml` produces a nine-line diff, not one. Two causes, both configuration:
+
+```python
+yaml = YAML()
+yaml.preserve_quotes = True
+yaml.width = 4096   # stop re-wrapping the long note: on await_battle_end
+yaml.representer.add_representer(
+    type(None),
+    lambda r, d: r.represent_scalar("tag:yaml.org,2002:null", "null"),
+)
+```
+
+Without `width=4096`, the long `note:` re-wraps. Without the null representer, `on_success: null` degrades to `on_success:` (twice). With both, a no-op round-trip is byte-identical and a real repair is a one-line diff. These settings live in `hitl/repair.py` and have their own regression test — do not "simplify" them.
+
 ### 8. Definition of done for this ticket
 
 A dump generated from capture 05 can be opened, a fresh target cropped from it, and `configs/arena_v2.yaml` rewritten — with a one-line diff, passing validation, and the new crop provably locatable in the screenshot it came from. The GUI is the least interesting part of that sentence, which is the correct outcome.
@@ -93,7 +108,9 @@ The single supported repair is: **a node's `target` points at a template that no
 
 ## PR 3.1 — Crash dump viewer
 
-A standalone CustomTkinter window, launched by `python -m hitl` and completely independent of `main.py`. `customtkinter` is already a dependency.
+**Status: DONE (written, unverified).** `hitl/app.py` + `python -m hitl`. Never opened on the build machine — `_tkinter` is missing. Smoke-test is a [Windows follow-up](#windows-follow-ups).
+
+A standalone CustomTkinter window, launched by `python -m hitl` and completely independent of `main.py`. `customtkinter` is already a dependency in `requirements.txt` (not `requirements-dev.txt`).
 
 - List dumps from `logs/dumps/`, newest first, labelled with timestamp, sequence name, and failed node.
 - On selection, show the screenshot alongside the JSON context, rendered readably rather than as a raw dump: which node failed, what action, what target it was looking for, and the `visited` path that led there.
@@ -119,6 +136,8 @@ Display the pixel coordinates of the current selection in the UI regardless — 
 
 ## PR 3.2 — Bounding box and crop
 
+**Status: DONE.** Pure crop logic in `hitl/repair.py::crop_target`; canvas drag-select lives in `hitl/app.py`.
+
 - Click-drag a rectangle over the displayed screenshot on a `tkinter` Canvas.
 - Show the live selection size in image pixels (which, at 1:1, are canvas pixels).
 - "Save Target" crops that region from the loaded image and writes it to `assets/dynamic/<node_name>_<YYYYMMDD-HHMMSS>.png`.
@@ -136,6 +155,8 @@ Reject a zero-area or absurdly small selection with a message rather than writin
 ---
 
 ## PR 3.3 — Config mutation with `ruamel.yaml`
+
+**Status: DONE.** `hitl/repair.py::rewrite_target` with the verified ruamel settings; restore-from-bytes on validation failure.
 
 Rewrite the failed node's `target` in the original config.
 
@@ -174,3 +195,88 @@ Configs are in git, so `git diff configs/` after a repair is the review mechanis
 ## Note on the original draft's example
 
 The draft used *"Failed looking for `assets/victory.png` at node `check_victory_screen`"*. `victory.png` exists in `assets/` but is referenced by zero lines of Python, and there is no victory or defeat detection anywhere in the Arena flow — v1 detects the end of a battle purely via `tapToContinue.png`. Use a node that actually exists, such as `select_opponent` looking for `arenaBattle.png`, so the demo is reproducible.
+
+---
+
+## Windows follow-ups
+
+Everything below needs a machine with a display toolkit (and, for some items, the game). The pure repair core is already tested on macOS. **The CustomTkinter window was written on a machine without `_tkinter` and has never been opened** — treat every claim about how it looks as something to check, not something proven.
+
+### 1. Smoke-test the HITL window (you can do this without the game)
+
+This Python on the Mac that built Phase 3 is Homebrew 3.13 **without** `python-tk`, and `customtkinter` is deliberately **not** in `requirements-dev.txt` (tests never import `hitl.app`, so adding it would only make the seam violable). On Windows the full `requirements.txt` already includes `customtkinter`.
+
+```text
+pip install -r requirements.txt          # includes customtkinter
+python -m hitl                           # opens the repair window
+```
+
+If you are on macOS instead:
+
+```text
+brew install python-tk@3.13
+pip install customtkinter
+python -m hitl
+```
+
+What "correct" looks like:
+
+1. Dumps under `logs/dumps/` are listed newest first, labelled with timestamp, sequence name, and failed node.
+2. Selecting one shows the screenshot **at 1:1** (900×600 canvas pixels = image pixels), the parsed context, and the current target template image beside it.
+3. Click-drag draws a rectangle; the toolbar shows `left / top / width / height` in image pixels.
+4. **Save Target** writes `assets/dynamic/<node>_<YYYYMMDD-HHMMSS>.png`, rewrites the failed node's `target` to `dynamic/<that file>`, and leaves a one-line `git diff` on the config.
+5. A dump whose PNG is missing shows an error in the context pane rather than crashing the window.
+6. If a loaded image is not 900×600, a warning appears and the image is still shown at 1:1 in a scrollable canvas — never silently scaled.
+
+**The classic bug to watch for:** if crops look right in the UI but fail to match at confidence 0.8 afterwards, the window is scaling the screenshot. Report that immediately; do not "fix" it by adjusting confidence.
+
+To generate a dump without the game (same fixture the tests use):
+
+```text
+python -m pytest tests/test_repair.py::test_end_to_end_repair_from_generated_dump -q
+# Or produce a real dump pair into logs/dumps/ from a deliberately-failed live run (item 2).
+```
+
+### 2. Capture 11 — realism check on the finished tool
+
+Capture 11 is **not** a gate on Phase 3 shipping. What it uniquely gives you is a screen with something *unanticipated* on it. Once you have a dump from a real lost screen:
+
+```text
+python -m hitl
+# select the capture-11 dump, crop a fresh target, Save Target
+git diff configs/
+python -m engine.validate configs/arena_v2.yaml
+```
+
+Confirm the new crop is found in that same dump PNG by eye and, if you want belt-and-braces, by a one-liner:
+
+```text
+python -c "import pyscreeze; print(pyscreeze.locate('assets/dynamic/<crop>.png', 'logs/dumps/<dump>.png', confidence=0.8))"
+```
+
+Shortcut to produce capture 11: a deliberately-failed live run — see [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups).
+
+### 3. Still open from Phases 1 and 2
+
+- **Phase 1 live smoke run** — PR 1.3 acceptance #4. Unchanged.
+- **Phase 2 live failure run** — PR 2.2 acceptance #2 (also delivers capture 11).
+- **Captures 02 and 10** — 10 completes the gem-refill guard coverage.
+- **`back_to_bastion()` unbounded ESC loop** — tracked in [Ticket 2 → Known risk, not fixed here](./Ticket_2_Phase2_Telemetry.md#known-risk-not-fixed-here). Needs its own ticket from the epic owner. **Do not fix it as a drive-by in Phase 3.**
+
+---
+
+## Deliverables
+
+```
+engine/models.py               # missing_assets walks recursively (posix-relative paths)
+assets/dynamic/.gitkeep        # crop destination; kept in git
+hitl/__init__.py
+hitl/repair.py                 # load_dump, crop_target, rewrite_target, validate_config
+hitl/app.py                    # CustomTkinter window — written, unverified without _tkinter
+hitl/__main__.py               # python -m hitl
+tests/test_repair.py           # fixture via 01/03/04/05 chain; one-line diff; crop round-trip; e2e
+tests/test_seam.py             # + guard: hitl.repair imports without tkinter/customtkinter
+tests/test_models.py           # + dynamic/ subdirectory coverage for missing_assets
+```
+
+`customtkinter` stays out of `requirements-dev.txt` on purpose. It is already in `requirements.txt` for the existing GUI. Do not add it to the dev set "so the window imports" — that would only make the seam easier to violate.

@@ -101,8 +101,8 @@ Ship in order. Each phase must be demonstrably working before the next starts.
 |---|---|---|---|
 | 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | **DONE (offline)** — PRs 1.1–1.4 shipped; live smoke run still open | Optional for core; required for the asset-match check (PR 1.4) |
 | 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **DONE (offline)** — PRs 2.1–2.2 shipped; live failure run still open | No, for the implementation. A live failed run now *produces* capture 11 |
-| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | **NEXT** | Captures 01, 03–09 are enough to build and test it. Capture 11 is a realism check, no longer a gate |
-| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | Not started | Yes, per module migrated |
+| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | **DONE (offline)** — PRs 3.1–3.3 shipped; GUI unverified without `_tkinter` | Captures 01, 03–09 were enough. Capture 11 is a realism check |
+| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | **NEXT** | Yes, per module migrated |
 
 Supporting document: [Screenshots Required](./Screenshots_Required.md) — the capture checklist for whoever has game access.
 
@@ -113,7 +113,7 @@ Supporting document: [Screenshots Required](./Screenshots_Required.md) — the c
 - [x] PR 1.3 — `configs/arena_v2.yaml`, `python -m engine.run`, FakeScreen graph tests
 - [x] PR 1.4 — screenshot replay harness; asset match + replay to `COMPLETED` on captures 01, 03–09
 - [ ] PR 1.3 acceptance #4 — **live smoke run on Windows** (explicit follow-up; do not fake from macOS)
-- [ ] Captures 02, 10, 11 — still outstanding (10 completes gem-guard coverage; 11 hard-blocks Phase 3)
+- [ ] Captures 02, 10, 11 — still outstanding (10 completes gem-guard coverage; 11 is a realism check on the HITL tool, no longer a Phase 3 gate)
 
 ### Phase 2 offline checklist (shipped 2026-08-01)
 
@@ -124,27 +124,32 @@ Supporting document: [Screenshots Required](./Screenshots_Required.md) — the c
 
 Suite is now `43 passed, 2 skipped` on macOS with no game.
 
-### Next task: Phase 3 — and it is no longer blocked
+### Phase 3 offline checklist (shipped 2026-08-01)
 
-See [Ticket 3](./Ticket_3_Phase3_HITL.md), which now opens with a **How a senior would do this** section. The short version:
+- [x] `missing_assets` recursive walk (posix-relative paths) — own commit ahead of the UI
+- [x] PR 3.3 — `hitl/repair.py` rewrite with ruamel (`width=4096` + null representer); one-line-diff + restore-from-bytes tests
+- [x] PR 3.2 — `crop_target` with dimension, pixel-identity, and locate round-trip tests; `assets/dynamic/`
+- [x] PR 3.1 — `hitl/app.py` CustomTkinter window + `python -m hitl` — **written, never opened** (no `_tkinter` on the build machine)
+- [x] Seam guard: importing `hitl.repair` pulls in neither `tkinter` nor `customtkinter`
+- [ ] GUI smoke-test on a machine with python-tk / Windows — see [Ticket 3 → Windows follow-ups](./Ticket_3_Phase3_HITL.md#windows-follow-ups)
+- [ ] Capture 11 realism check on the finished tool
 
-1. **Stop waiting for capture 11.** That gate was set when the repo had zero captures. Eight are delivered and Phase 2 ships a dump writer, so the fixture can be *generated*: drive `ScreenshotScreen` over `05_arena_opponent_list.png` with a deliberately-broken target, and `write_crash_dump` produces a real dump pair. Capture 11 remains worth asking for as a realism check on the finished tool.
-2. **Build inside-out: PR 3.3, then 3.2, then 3.1.** The YAML mutation and the crop are pure functions with sharp acceptance criteria. The CustomTkinter window is a thin view over them and the only part with no automated coverage.
-3. **Split `hitl/repair.py` from `hitl/app.py`.** `_tkinter` is not even importable in this Python, which enforces the seam for free — the same lesson as `pyautogui` in Phase 1 and `pygetwindow` in Phase 2.
-4. **Land the `missing_assets` recursive-walk change first, on its own.** PR 3.3's validation depends on it and it is the one permitted edit to Phase 1 code.
+Suite after Phase 3: `55 passed, 2 skipped` on macOS with no game.
 
-If the game machine is free, the Phase 1 live smoke run is still the only outstanding gate that proves clicks actually work, and one deliberately-failed live run also delivers capture 11 — details in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups).
+### Next task: Phase 4 — migration
+
+See [Ticket 4](./Ticket_4_Phase4_Migration.md). Phase 3's remaining work is all on the game machine (GUI smoke-test, capture 11) and does not block starting Phase 4 planning, but the Phase 1 live smoke run is still the only outstanding gate that proves clicks actually work — details in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups).
 
 ## Definition of done for the epic
 
 1. A single Arena battle runs start to finish from `configs/arena_v2.yaml` with no Arena-specific Python executed. *(offline proven; live Windows smoke still open)*
 2. The engine has unit tests that pass on any OS with no game installed. **Done** (`31 passed, 2 skipped` on macOS).
 3. A failed run leaves a screenshot and a JSON context file behind. **Done offline** (`engine/dump.py`); live failure run on Windows still outstanding.
-4. A human can repair a broken image target through the HITL UI without opening an editor. *(Phase 3)*
+4. A human can repair a broken image target through the HITL UI without opening an editor. **Done offline** (`hitl/repair.py` tested; `hitl/app.py` written but unverified without `_tkinter`).
 5. `Modules/arena/DailyTenArenaCommand.py` is still present and still works. Removing v1 is Phase 4's problem, and only once v2 has proven itself over real runs.
 
 ## Open questions for the epic owner
 
 1. **What OS is the assigned developer on?** **Resolved: macOS.** Offline Phase 1 is fully runnable here; live `ClickHandler` runs stay on Windows.
-2. **Who captures the screenshots, and when?** 01 and 03–09 delivered. Still need 02 (ad), 10 (out-of-tokens), and **11 (lost screen — Phase 3 blocker)**. See [Screenshots Required](./Screenshots_Required.md).
+2. **Who captures the screenshots, and when?** 01 and 03–09 delivered. Still need 02 (ad), 10 (out-of-tokens), and **11 (lost screen — realism check for the HITL tool, not a Phase 3 gate)**. See [Screenshots Required](./Screenshots_Required.md).
 3. **Is anyone available to do live smoke runs on the game machine?** **Yes, on request.** That run closes PR 1.3 acceptance #4 — still outstanding.
