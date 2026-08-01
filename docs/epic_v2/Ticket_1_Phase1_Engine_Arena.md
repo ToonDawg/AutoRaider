@@ -50,7 +50,9 @@ Keep the OpenCV version reasonably pinned, and do not write tests whose expected
 
 `utils/click_handler.py` imports `pyautogui` at module scope. On macOS that pulls in pyobjc, and on a headless Linux box it fails outright — so any test that transitively imports it becomes unrunnable on the developer's machine, which defeats the whole point of the `ScreenActions` seam.
 
-The rule: **`engine/models.py`, `engine/runner.py` and `engine/screen.py` may import from `utils.exceptions` and `utils.constants` and nothing else.** Both are dependency-free (`exceptions.py` imports nothing; `constants.py` imports only `typing`), so they are safe anywhere. `engine/run.py` is the only module permitted to import `ClickHandler`, and it is never imported by a test.
+The rule: **`engine/models.py`, `engine/runner.py` and `engine/screen.py` may import from `utils.exceptions` and `utils.constants` and nothing else.** Both are dependency-free (`exceptions.py` imports nothing; `constants.py` imports only `typing`), so they are safe anywhere. `engine/run.py` is the only module permitted to import `ClickHandler`.
+
+**Amended by Phase 2.** This section originally added "and it is never imported by a test". `tests/test_dump.py` now imports `engine.run` to test the dump-before-recover ordering, so the `pygetwindow` and `ClickHandler` imports moved inside `main()` and `tests/test_seam.py` gained a guard that importing `engine.run` pulls in neither. The rule is unchanged in substance: no test may transitively import `pyautogui`. See [Ticket 2 → PR 2.2](./Ticket_2_Phase2_Telemetry.md#how-the-entry-point-had-to-change-to-make-that-testable).
 
 Enforce it with a test that imports `engine.runner` and asserts `pyautogui` is absent from `sys.modules`. One assertion, and it stops the seam eroding later.
 

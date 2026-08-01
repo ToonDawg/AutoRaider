@@ -100,7 +100,7 @@ Ship in order. Each phase must be demonstrably working before the next starts.
 | Phase | Ticket | Status | Needs screenshots? |
 |---|---|---|---|
 | 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | **DONE (offline)** — PRs 1.1–1.4 shipped; live smoke run still open | Optional for core; required for the asset-match check (PR 1.4) |
-| 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **NEXT** | Yes — one representative "lost" screen (capture 11) |
+| 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **DONE (offline)** — PRs 2.1–2.2 shipped; live failure run still open | No, for the implementation. A live failed run now *produces* capture 11 |
 | 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | Blocked on capture 11 | **Yes, hard blocker** — the UI is meaningless without real captures |
 | 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | Not started | Yes, per module migrated |
 
@@ -115,15 +115,28 @@ Supporting document: [Screenshots Required](./Screenshots_Required.md) — the c
 - [ ] PR 1.3 acceptance #4 — **live smoke run on Windows** (explicit follow-up; do not fake from macOS)
 - [ ] Captures 02, 10, 11 — still outstanding (10 completes gem-guard coverage; 11 hard-blocks Phase 3)
 
-### Next task: Phase 2
+### Phase 2 offline checklist (shipped 2026-08-01)
 
-See [Ticket 2](./Ticket_2_Phase2_Telemetry.md). Do not start Phase 3 until capture 11 exists. Prefer closing the Windows live smoke run in parallel if the game machine is free — it is the only remaining Phase 1 gate that proves clicks actually work.
+- [x] PR 2.1 — `engine/dump.py`, paired `.png` + `.json` under `logs/dumps/`, injected `grab_screen`
+- [x] PR 2.2 — `run_sequence()` extracted from `engine/run.py`; dump-before-recover asserted with a recording fake
+- [ ] PR 2.2 acceptance #2 — **live failure run on Windows.** See [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups)
+- [ ] `back_to_bastion()` attempt cap — flagged for the epic owner as a separate ticket, deliberately not fixed here
+
+Suite is now `43 passed, 2 skipped` on macOS with no game.
+
+### Next task: Phase 3, once capture 11 exists
+
+See [Ticket 3](./Ticket_3_Phase3_HITL.md). **Do not start it until capture 11 exists** — the UI has nothing to display without it.
+
+The cheapest way to get capture 11 is now one deliberately-failed live v2 run: the Phase 2 crash dump writes a 900×600 PNG of whatever screen the bot was stuck on, which is exactly what Phase 3 needs and closes PR 2.2 acceptance #2 at the same time. Details in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups).
+
+If the game machine is free, the Phase 1 live smoke run is still the only outstanding gate that proves clicks actually work.
 
 ## Definition of done for the epic
 
 1. A single Arena battle runs start to finish from `configs/arena_v2.yaml` with no Arena-specific Python executed. *(offline proven; live Windows smoke still open)*
 2. The engine has unit tests that pass on any OS with no game installed. **Done** (`31 passed, 2 skipped` on macOS).
-3. A failed run leaves a screenshot and a JSON context file behind. *(Phase 2)*
+3. A failed run leaves a screenshot and a JSON context file behind. **Done offline** (`engine/dump.py`); live failure run on Windows still outstanding.
 4. A human can repair a broken image target through the HITL UI without opening an editor. *(Phase 3)*
 5. `Modules/arena/DailyTenArenaCommand.py` is still present and still works. Removing v1 is Phase 4's problem, and only once v2 has proven itself over real runs.
 

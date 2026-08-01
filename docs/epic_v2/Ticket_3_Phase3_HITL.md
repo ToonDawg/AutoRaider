@@ -2,7 +2,7 @@
 
 **Goal:** repair a broken image target by re-cropping it from the crash screenshot, without opening an editor.
 
-**Depends on:** Phase 2 (crash dumps exist and record `config_path` + `failed_node`).
+**Depends on:** Phase 2 (crash dumps exist and record `config_path` + `failed_node`). **Met** — `engine/dump.py` writes both fields; the exact file shape is in [Ticket 2 → PR 2.1](./Ticket_2_Phase2_Telemetry.md#files).
 
 **Game access needed?** No. **Screenshots needed? Yes — this is a hard blocker.** The tool is unbuildable and untestable without realistic 900×600 game-window captures. See [Screenshots Required](./Screenshots_Required.md), captures 1–11.
 
@@ -36,7 +36,7 @@ Display the pixel coordinates of the current selection in the UI regardless — 
 
 1. Given a directory of dump pairs, all are listed newest first.
 2. Selecting one shows the screenshot, the parsed context, and the existing target template.
-3. A dump whose PNG is missing shows an error row instead of crashing.
+3. A dump whose PNG is missing shows an error row instead of crashing. `write_crash_dump` captures the screen before writing anything, so it never produces a JSON without its PNG — but `logs/dumps/` is a directory humans copy files in and out of, so still handle it.
 
 ---
 

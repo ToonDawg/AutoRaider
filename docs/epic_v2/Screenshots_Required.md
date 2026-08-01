@@ -17,7 +17,7 @@
 | 08 | `08_mid_battle.png` | Delivered (900×600) | `inBattle.png` does **not** match; `tapToContinue.png` *does* match (capture may be late-battle/results) |
 | 09 | `09_battle_results.png` | Delivered (900×600) | `tapToContinue.png` matches |
 | 10 | `10_out_of_tokens.png` | **Outstanding** | Completes PR 1.4 gem-refill guard coverage — high priority |
-| 11 | (any lost screen) | **Outstanding** | **Hard blocker for Phase 3** |
+| 11 | (any lost screen) | **Outstanding** | **Hard blocker for Phase 3.** Easiest route is now a crash dump — see below |
 
 Phase 1 offline work shipped against 01 and 03–09. `tests/test_assets_match.py` skips `exitAdd.png` and `ArenaRefillGems.png` by name until 02 and 10 arrive. Replay of 01→09 reaches `COMPLETED`.
 
@@ -84,13 +84,26 @@ Notes:
 - **10** only shows up when Arena tokens are actually exhausted, so grab it at the end of a session. It is worth the wait: it is the guard that stops the bot spending real gems, and it is the one node we most want tested.
 - **07** and **08** are not used by the Phase 1 config but cost nothing while you are there, and the next sequence will want them. Current 07/08 deliveries do not match `loadingScreen.png` / `inBattle.png` — re-capture or refresh those crops when convenient.
 
-## Failure case — required for Phase 2 and 3
+## Failure case — required for Phase 3
 
 | # | Screen | Purpose |
 |---|---|---|
-| 11 | Any screen where the bot would be lost — an unexpected modal, an event popup, a login screen, mid-transition | The realistic input for a crash dump and the HITL crop tool |
+| 11 | Any screen where the bot would be lost — an unexpected modal, an event popup, a login screen, mid-transition | The realistic input for the HITL crop tool |
 
 Anything genuinely unexpected works. A real one from a failed run is ideal; a plausible stand-in is fine.
+
+### The bot can capture this one for you (easiest route)
+
+Phase 2 shipped, so a failed v2 run now writes its own 900×600 crop of whatever screen it got stuck on, plus a JSON file naming the node that failed and the path it took to get there. That is a better capture 11 than anything posed by hand, and delivering it also closes the last Phase 2 acceptance item.
+
+Start the sequence from somewhere that is *not* the Bastion so it fails on purpose:
+
+```text
+pip install -r requirements.txt
+python -m engine.run configs/arena_v2.yaml
+```
+
+Look for `Crash dump written: logs/dumps/<timestamp>.json` in the log, then send that `.json` and the `.png` sitting next to it. If the PNG is not exactly 900×600, say so and include your display scaling percentage — do not resize it.
 
 ## Nice to have — not blocking
 
@@ -108,6 +121,8 @@ Anything genuinely unexpected works. A real one from a failed run is ideal; a pl
 1. **Confirm each template still matches.** Run `pyscreeze.locate(template, screenshot, confidence=0.8)` for every target in `configs/arena_v2.yaml`. Any miss is a stale asset crop — a real bug that would otherwise only surface as a mystery failure on a live run.
 2. **Replay the sequence offline.** Feed 01 → 09 to the engine in order and assert the config reaches `COMPLETED`. This is the closest thing to an integration test available without the game.
 3. **Build and test the HITL tool** against capture 11, including verifying that a freshly cropped target is then found in that same screenshot.
+
+The Phase 2 crash dump is deliberately the same 900×600 window crop as these captures, for the same reason: it is exactly the haystack the matcher was searching, so a target cropped from a dump is guaranteed to be searched for at the same scale it was cut at.
 
 ## What these captures do and do not prove
 

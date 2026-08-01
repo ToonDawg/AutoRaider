@@ -66,6 +66,27 @@ def test_engine_models_and_screen_do_not_import_pyautogui():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_engine_run_is_importable_without_windows_deps():
+    """engine.run owns the dump-before-recover ordering, so it has to be
+    importable off Windows. Its pygetwindow / ClickHandler imports live inside
+    main() for exactly that reason.
+    """
+    code = (
+        "import sys\n"
+        "import engine.run  # noqa: F401\n"
+        "assert 'pyautogui' not in sys.modules\n"
+        "assert 'pygetwindow' not in sys.modules\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        env=_subprocess_env(),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def _param_names(func_def: ast.FunctionDef) -> list[str]:
     names = [a.arg for a in func_def.args.args]
     if names and names[0] == "self":
