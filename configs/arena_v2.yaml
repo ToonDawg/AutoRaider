@@ -1,0 +1,81 @@
+# configs/arena_v2.yaml
+name: "Arena - single classic battle"
+start_node: close_popup_ads
+
+# on_failure is omitted where a failure means the bot is lost.
+# An omitted edge is null, which ends the run as ABORTED.
+
+nodes:
+  close_popup_ads:
+    action: CLICK_IMAGE
+    target: exitAdd.png
+    settle_seconds: 3
+    note: "Best effort - no ad on screen is the normal case, so both edges continue."
+    on_success: open_battle_menu
+    on_failure: open_battle_menu
+
+  open_battle_menu:
+    action: CLICK_IMAGE
+    target: battleBTN.png
+    settle_seconds: 1
+    on_success: open_arena_tab
+
+  open_arena_tab:
+    action: CLICK_IMAGE
+    target: arenaTab.png
+    settle_seconds: 1
+    on_success: enter_classic_arena
+
+  enter_classic_arena:
+    action: CLICK_IMAGE
+    target: classicArena.png
+    settle_seconds: 2
+    on_success: select_opponent
+
+  select_opponent:
+    action: CLICK_IMAGE
+    target: arenaBattle.png
+    settle_seconds: 2
+    note: "Clicks the best single match. v1 clicked every visible Battle button."
+    on_success: check_out_of_tokens
+
+  check_out_of_tokens:
+    action: IMAGE_PRESENT
+    target: ArenaRefillGems.png
+    note: >-
+      Guard against spending real gems. on_success means the refill prompt IS
+      on screen, which is a legitimate stop rather than a failure.
+    on_success: leave_refill_prompt
+    on_failure: start_battle
+
+  leave_refill_prompt:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: null
+
+  start_battle:
+    action: CLICK_IMAGE
+    target: arenaStart.png
+    settle_seconds: 1
+    on_success: await_battle_end
+
+  await_battle_end:
+    action: WAIT_FOR_IMAGE
+    target: tapToContinue.png
+    timeout_seconds: 120
+    check_interval_seconds: 2
+    note: "Battle end is detected by tapToContinue appearing. There is no victory or defeat detection in v1."
+    on_success: dismiss_results
+
+  dismiss_results:
+    action: CLICK_IMAGE
+    target: tapToContinue.png
+    settle_seconds: 1
+    on_success: return_to_opponent_list
+
+  return_to_opponent_list:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 2
+    on_success: null

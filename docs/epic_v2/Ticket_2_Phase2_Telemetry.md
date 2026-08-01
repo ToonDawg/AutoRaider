@@ -1,10 +1,24 @@
 # Phase 2: Telemetry & Crash Dumps
 
+**Status: NEXT** — Phase 1 offline is done. Start here.
+
 **Goal:** when the bot gets lost, leave behind enough evidence to fix it later without being at the machine.
 
-**Depends on:** Phase 1 complete (`RunResult` with `Outcome` and `visited`).
+**Depends on:** Phase 1 complete (`RunResult` with `Outcome` and `visited`). **Met.**
 
 **Game access needed?** No, for the implementation. One screenshot is needed to exercise the viewer in Phase 3 — see [Screenshots Required](./Screenshots_Required.md), capture 11.
+
+## How a senior would do this
+
+Phase 2 is small on purpose. Keep it that way.
+
+1. **Read the Phase 1 seams before writing.** Crash dumps hang off `RunResult` and the `engine.run` entry point — not inside `SequenceRunner`. The runner must stay I/O-free so FakeScreen / ScreenshotScreen tests stay trivial. If you feel the urge to add a callback hook into the loop, stop; Ticket 2 already rejected that.
+2. **Inject `grab_screen`.** Do not call `ImageGrab` from `engine/dump.py` at import time or hard-wire it. Signature is already specified: pass a callable so unit tests inject a tiny `PIL.Image` and never touch the display. On the live path, the entry point closes over `ClickHandler.region` (900×600 window crop, or full screen when `--full-screen`).
+3. **Order is load-bearing: dump, then recover.** Write the dump *before* `back_to_bastion()` / `delete_popup()`. ESC spam destroys the evidence if you reverse them. Put that ordering in `engine/run.py` and assert it with a recording fake (PR 2.2 acceptance).
+4. **Dumping must never take down the run.** Wrap `write_crash_dump` in try/except; return `None` and log. A broken dump must not block Bastion recovery.
+5. **Stay out of `Modules/` and `utils/`.** Phase 2 only adds `engine/dump.py`, wires it from `engine/run.py`, and adds `tests/test_dump.py`. Do not "fix" `back_to_bastion()`'s unbounded ESC loop as a drive-by — that is a separate ticket (noted at the bottom of this file).
+6. **Do not wait for capture 11 to start coding.** PR 2.1/2.2 are fully testable with a synthetic image. Capture 11 unblocks Phase 3's viewer, not Phase 2's generator. Parallelize: implement dumps on macOS while someone on Windows grabs 02/10/11 and runs the Phase 1 live smoke.
+7. **Definition of done for this ticket.** `ABORTED` and `STEP_LIMIT` write paired `.png` + `.json` under `logs/dumps/`; `COMPLETED` writes nothing; dump-before-recover is tested; live failure (when available) leaves a usable stuck-screen PNG.
 
 ## Scope
 

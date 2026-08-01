@@ -1,5 +1,7 @@
 # Phase 1: The Engine & One Arena Battle
 
+**Status: DONE (offline) — 2026-08-01.** PRs 1.1–1.4 shipped. Suite: `31 passed, 2 skipped` on macOS with no game. Remaining: live smoke run on Windows (PR 1.3 acceptance #4), and captures 02/10/11.
+
 **Goal:** a YAML file drives a single Classic Arena battle from the Bastion and back, with no Arena-specific Python running.
 
 **Game access needed?** PRs 1.1 and 1.2 need none. PR 1.3 needs one live smoke run by someone with the game. PR 1.4 is blocked on [screenshots](./Screenshots_Required.md).
@@ -62,6 +64,8 @@ Enforce it with a test that imports `engine.runner` and asserts `pyautogui` is a
 ---
 
 ## PR 1.1 — Schema, validation, and a validate command
+
+**Status: DONE.** `engine/models.py`, `engine/validate.py`, `tests/test_models.py`, `pytest.ini`, deps in `requirements.txt` + `requirements-dev.txt`.
 
 Create `engine/models.py`. Add `pydantic>=2.0` and `ruamel.yaml>=0.18` to `requirements.txt`.
 
@@ -166,6 +170,8 @@ This is the developer's main feedback loop without a game. Make its error messag
 ---
 
 ## PR 1.2 — The runner and the fake screen
+
+**Status: DONE.** `engine/screen.py`, `engine/runner.py` (injected `sleep`), `tests/fakes.py`, `tests/test_runner.py`, `tests/test_seam.py` (subprocess import-purity + AST ClickHandler contract). Two permitted `ClickHandler` edits shipped with v1 defaults.
 
 This PR is the reason a developer without the game can do this work. Get the seam right.
 
@@ -343,6 +349,8 @@ Test 8 matters because the draft assumed `click_image(target, timeout=...)`, and
 
 ## PR 1.3 — The Arena config and a live run
 
+**Status: DONE (offline).** `configs/arena_v2.yaml`, `engine/run.py`, `tests/test_arena_config.py` (happy path + gem-refill guard). Live smoke run still open — see follow-up under Acceptance.
+
 `configs/arena_v2.yaml`, transcribed from `Modules/arena/DailyTenArenaCommand.py`. Every asset below exists in `assets/` today.
 
 **Targets are bare filenames.** `ClickHandler` resolves the assets directory itself and prepends it, so `assets/arenaBattle.png` becomes `assets/assets/arenaBattle.png` and never matches.
@@ -446,7 +454,20 @@ Standalone on purpose. Do not touch `main.py`, `app/pyAutoRaid.py`, the command 
 3. A test scripting `ArenaRefillGems.png` as present ends at `leave_refill_prompt` with `COMPLETED` and never reaches `start_battle`.
 4. **Live smoke run** (needs someone with the game): starting from the Bastion, one Arena battle completes and the run returns `COMPLETED`. `Modules/arena/` is not imported.
 
-If nobody can do (4) during this phase, ship on 1–3 and log the live run as an explicit follow-up. Do not fake it.
+#### Open follow-up — live smoke run (acceptance #4)
+
+**Status: outstanding.** Phase 1 offline acceptance (1–3) and PR 1.4 replay shipped on macOS. The live smoke run cannot run here (`pywin32` / game window APIs are Windows-only).
+
+On the Windows game machine:
+
+```text
+pip install -r requirements.txt   # full set, including pywin32
+python -m engine.run configs/arena_v2.yaml
+# If matching looks wrong, isolate region vs engine:
+python -m engine.run configs/arena_v2.yaml --full-screen
+```
+
+Expect `outcome=COMPLETED` from Bastion through one Classic Arena battle. Log the region at startup — it should be 900×600. Do not fake this from macOS.
 
 ### Turning one battle into many (later, not now)
 
@@ -456,7 +477,9 @@ Once one battle is proven, point `return_to_opponent_list.on_success` back at `s
 
 ## PR 1.4 — Screenshot replay harness
 
-**Blocked on screenshots.** See [Screenshots Required](./Screenshots_Required.md), captures 1–10.
+**Status: DONE (partial coverage).** `tests/screenshot_screen.py` (forward-polling `wait_for_image`), `tests/test_assets_match.py`, `tests/test_replay.py` — replay 01→09 reaches `COMPLETED`. Skips by name for `exitAdd.png` (needs 02) and `ArenaRefillGems.png` (needs 10).
+
+See [Screenshots Required](./Screenshots_Required.md), captures 1–10.
 
 The `FakeScreen` tests prove the graph is wired correctly. They prove nothing about whether `arenaBattle.png` actually matches an Arena screen at confidence 0.8. That gap can only be closed with real captures, and it is where live runs usually break.
 
@@ -464,8 +487,8 @@ Build a second `ScreenActions` implementation that reads from a scripted list of
 
 - Matching: `pyscreeze.locate(needle_path, haystack_path, confidence=0.8)` — the same matcher and the same confidence the live bot uses, pointed at a file.
 - `click_image` succeeds if the template is found in the current screenshot, then advances to the next screenshot in the list.
-- `is_image_present` and `wait_for_image` check the current screenshot without advancing (`wait_for_image` returns immediately rather than polling).
-
+- `is_image_present` checks the current screenshot without advancing.
+- `wait_for_image` polls **forward** through the screenshot list until the template matches or the list is exhausted, and does **not** advance past a successful match (so a following `CLICK_IMAGE` of the same target still finds it). Checking only the current frame would abort the Arena replay: after `start_battle` advances past capture 06, `await_battle_end` would look for `tapToContinue.png` on the loading screen and fail.
 The supplied captures are **900×600 game-window crops**, which is exactly the haystack the region-scoped live search sees. That equivalence is what makes this harness a meaningful signal rather than an approximation, and it is the reason for permitted edit 2 in PR 1.2.
 
 Reuse `ScreenActions` unchanged. Keep the whole thing around 60 lines; it is a test harness, not a game simulator.
@@ -489,10 +512,14 @@ engine/validate.py     # python -m engine.validate
 engine/run.py          # python -m engine.run
 configs/arena_v2.yaml
 tests/fakes.py
+tests/screenshot_screen.py
 tests/test_models.py
 tests/test_runner.py
+tests/test_seam.py
 tests/test_arena_config.py
-tests/screenshots/     # PR 1.4, supplied separately
+tests/test_assets_match.py
+tests/test_replay.py
+tests/screenshots/     # PR 1.4 captures (01, 03–09 delivered; 02, 10, 11 outstanding)
 ```
 
 Plus `pydantic>=2.0`, `ruamel.yaml>=0.18` and `pytest>=8.0` added to `requirements.txt`, a new `requirements-dev.txt` (see Developer environment above), and a minimal `pytest.ini` — this repo has no test infrastructure at all today, so Phase 1 is establishing it.

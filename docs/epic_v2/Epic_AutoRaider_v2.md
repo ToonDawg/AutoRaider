@@ -97,25 +97,38 @@ These were found by reading the current code. Each one is resolved in the ticket
 
 Ship in order. Each phase must be demonstrably working before the next starts.
 
-| Phase | Ticket | Needs screenshots? |
-|---|---|---|
-| 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | Optional for core; required for the asset-match check (PR 1.4) |
-| 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | Yes — one representative "lost" screen |
-| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | **Yes, hard blocker** — the UI is meaningless without real captures |
-| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | Yes, per module migrated |
+| Phase | Ticket | Status | Needs screenshots? |
+|---|---|---|---|
+| 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | **DONE (offline)** — PRs 1.1–1.4 shipped; live smoke run still open | Optional for core; required for the asset-match check (PR 1.4) |
+| 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **NEXT** | Yes — one representative "lost" screen (capture 11) |
+| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | Blocked on capture 11 | **Yes, hard blocker** — the UI is meaningless without real captures |
+| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | Not started | Yes, per module migrated |
 
 Supporting document: [Screenshots Required](./Screenshots_Required.md) — the capture checklist for whoever has game access.
 
+### Phase 1 offline checklist (shipped 2026-08-01)
+
+- [x] PR 1.1 — schema, validation, `python -m engine.validate`
+- [x] PR 1.2 — `ScreenActions` seam, runner, `FakeScreen`, ClickHandler region + `is_image_present`
+- [x] PR 1.3 — `configs/arena_v2.yaml`, `python -m engine.run`, FakeScreen graph tests
+- [x] PR 1.4 — screenshot replay harness; asset match + replay to `COMPLETED` on captures 01, 03–09
+- [ ] PR 1.3 acceptance #4 — **live smoke run on Windows** (explicit follow-up; do not fake from macOS)
+- [ ] Captures 02, 10, 11 — still outstanding (10 completes gem-guard coverage; 11 hard-blocks Phase 3)
+
+### Next task: Phase 2
+
+See [Ticket 2](./Ticket_2_Phase2_Telemetry.md). Do not start Phase 3 until capture 11 exists. Prefer closing the Windows live smoke run in parallel if the game machine is free — it is the only remaining Phase 1 gate that proves clicks actually work.
+
 ## Definition of done for the epic
 
-1. A single Arena battle runs start to finish from `configs/arena_v2.yaml` with no Arena-specific Python executed.
-2. The engine has unit tests that pass on any OS with no game installed.
-3. A failed run leaves a screenshot and a JSON context file behind.
-4. A human can repair a broken image target through the HITL UI without opening an editor.
+1. A single Arena battle runs start to finish from `configs/arena_v2.yaml` with no Arena-specific Python executed. *(offline proven; live Windows smoke still open)*
+2. The engine has unit tests that pass on any OS with no game installed. **Done** (`31 passed, 2 skipped` on macOS).
+3. A failed run leaves a screenshot and a JSON context file behind. *(Phase 2)*
+4. A human can repair a broken image target through the HITL UI without opening an editor. *(Phase 3)*
 5. `Modules/arena/DailyTenArenaCommand.py` is still present and still works. Removing v1 is Phase 4's problem, and only once v2 has proven itself over real runs.
 
 ## Open questions for the epic owner
 
-1. **What OS is the assigned developer on?** It does not block them either way — the matching is a pure function of two image files and behaves identically everywhere, and the dependency subset in Ticket 1 installs cleanly on all three platforms. What it changes is verification: on macOS or Linux they can never run the real `ClickHandler`, so the screenshot-replay harness (PR 1.4) becomes the only integration signal they will ever get, and someone else has to own every live run.
-2. **Who captures the screenshots, and when?** Phase 3 cannot start without them. See [Screenshots Required](./Screenshots_Required.md).
-3. **Is anyone available to do live smoke runs on the game machine?** Someone has to press play on a real Arena run to close out PR 1.3. If not, Phase 1's definition of done has to be reduced to the offline tests, and live verification becomes a separate follow-up.
+1. **What OS is the assigned developer on?** **Resolved: macOS.** Offline Phase 1 is fully runnable here; live `ClickHandler` runs stay on Windows.
+2. **Who captures the screenshots, and when?** 01 and 03–09 delivered. Still need 02 (ad), 10 (out-of-tokens), and **11 (lost screen — Phase 3 blocker)**. See [Screenshots Required](./Screenshots_Required.md).
+3. **Is anyone available to do live smoke runs on the game machine?** **Yes, on request.** That run closes PR 1.3 acceptance #4 — still outstanding.

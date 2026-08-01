@@ -3,7 +3,7 @@ import pyautogui
 import pyscreeze
 import sys
 from pathlib import Path
-from typing import Optional, List, Tuple, Any
+from typing import Optional, List, Tuple, Any, Callable
 from utils.exceptions import CancellationException
 from utils.constants import (
     CENTER_X, CENTER_Y, DEFAULT_SWIPE_DISTANCE, 
@@ -15,18 +15,31 @@ from utils.ocr_handler import OCRHandler
 class ClickHandler:
     """A reusable class for handling click-related logic in an auto-clicker app."""
 
-    def __init__(self, logger: Any):
+    def __init__(
+        self,
+        logger: Any,
+        region_provider: Callable[[], tuple[int, int, int, int] | None] | None = None,
+    ):
         """
         Initialize the ClickHandler.
 
         Args:
             logger (logging.Logger): Logger instance for logging actions and errors.
+            region_provider: Optional callable returning (left, top, width, height)
+                of the game window, or None to search the whole screen. Defaults to
+                None, which preserves v1 whole-desktop behaviour.
         """
         self.logger = logger
         self.steps: dict[str, str] = {}
         self.asset_path: Optional[Path] = self.get_asset_path()
         self.cancel_flag: bool = False
         self.ocr_handler = OCRHandler(logger)
+        self._region_provider = region_provider
+
+    @property
+    def region(self) -> tuple[int, int, int, int] | None:
+        """(left, top, width, height) of the game window, or None for whole screen."""
+        return self._region_provider() if self._region_provider else None
 
     def _get_image_path(self, image_name: str) -> str:
         """Helper method to construct the full path for an image."""
@@ -47,7 +60,9 @@ class ClickHandler:
         """
         image_path = self._get_image_path(image_name)
         try:
-            location = pyautogui.locateOnScreen(image_path, confidence=DEFAULT_CONFIDENCE)
+            location = pyautogui.locateOnScreen(
+                image_path, confidence=DEFAULT_CONFIDENCE, region=self.region
+            )
             if location:
                 self.logger.debug(f"Located {description} at: {location}.")
             else:
@@ -56,7 +71,11 @@ class ClickHandler:
         except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
             self.logger.debug(f"Could not locate {description}.")
             return None
-        
+
+    def is_image_present(self, image_name: str, description: str = "") -> bool:
+        """Single non-blocking check for an image on screen."""
+        return self._locate_image(image_name, description) is not None
+
     def wait_for_image(self, image_name: str, description: str = "", timeout: int = DEFAULT_WAIT_TIMEOUT, check_interval: int = DEFAULT_WAIT_INTERVAL) -> bool:
         """
         Wait until an image appears on the screen.
@@ -145,7 +164,9 @@ class ClickHandler:
             if self.cancel_flag:
                 self.logger.info("Task cancellation requested during wait_until_disappears.")
                 raise CancellationException("Task cancelled by user.")
-            if not pyautogui.locateOnScreen(image_path, confidence=DEFAULT_CONFIDENCE):
+            if not pyautogui.locateOnScreen(
+                image_path, confidence=DEFAULT_CONFIDENCE, region=self.region
+            ):
                 self.logger.info(f"{description} has disappeared from the screen.")
                 return True
 
@@ -278,7 +299,9 @@ class ClickHandler:
         attempts = 0
         while attempts < max_attempts:
             try:
-                location = pyautogui.locateOnScreen(exit_add_image, confidence=DEFAULT_CONFIDENCE)
+                location = pyautogui.locateOnScreen(
+                    exit_add_image, confidence=DEFAULT_CONFIDENCE, region=self.region
+                )
                 if location:
                     adx, ady = pyautogui.center(location)
                     pyautogui.click(adx, ady)
@@ -384,7 +407,12 @@ class ClickHandler:
         """Finds all visible battle buttons on the screen and returns their centers."""
         image_path = self._get_image_path(image_name)
         try:
-            return [pyautogui.center(btn) for btn in pyautogui.locateAllOnScreen(image_path, confidence=DEFAULT_CONFIDENCE)]
+            return [
+                pyautogui.center(btn)
+                for btn in pyautogui.locateAllOnScreen(
+                    image_path, confidence=DEFAULT_CONFIDENCE, region=self.region
+                )
+            ]
         except (pyautogui.ImageNotFoundException, pyscreeze.ImageNotFoundException):
             return []
 

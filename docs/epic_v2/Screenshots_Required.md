@@ -3,7 +3,25 @@
 **For:** whoever has access to the game machine.
 **Why:** the developer implementing [AutoRaider v2](./Epic_AutoRaider_v2.md) cannot run the game. Without these captures, PR 1.4 cannot be verified and Phase 3 cannot be built at all.
 
-The repository has **zero** captures of actual game screens today. `assets/` contains 170 small template crops — enough to feed the matcher, not enough to test it. You cannot check that `arenaBattle.png` still matches an Arena screen without an Arena screen to match it against.
+## Delivery status (2026-08-01)
+
+| # | File | Status | Notes |
+|---|---|---|---|
+| 01 | `01_bastion.png` | Delivered (900×600) | `battleBTN.png` matches |
+| 02 | `02_bastion_ad.png` | **Outstanding** | Needed to verify `exitAdd.png`; opportunistic |
+| 03 | `03_battle_menu.png` | Delivered (900×600) | `arenaTab.png` matches |
+| 04 | `04_arena_mode_selection.png` | Delivered (900×600) | `classicArena.png` matches |
+| 05 | `05_arena_opponent_list.png` | Delivered (900×600) | `arenaBattle.png` matches |
+| 06 | `06_pre_battle_team.png` | Delivered (900×600) | `arenaStart.png` matches |
+| 07 | `07_loading_screen.png` | Delivered (900×600) | `loadingScreen.png` does **not** match this frame — crop may be stale or capture mistimed |
+| 08 | `08_mid_battle.png` | Delivered (900×600) | `inBattle.png` does **not** match; `tapToContinue.png` *does* match (capture may be late-battle/results) |
+| 09 | `09_battle_results.png` | Delivered (900×600) | `tapToContinue.png` matches |
+| 10 | `10_out_of_tokens.png` | **Outstanding** | Completes PR 1.4 gem-refill guard coverage — high priority |
+| 11 | (any lost screen) | **Outstanding** | **Hard blocker for Phase 3** |
+
+Phase 1 offline work shipped against 01 and 03–09. `tests/test_assets_match.py` skips `exitAdd.png` and `ArenaRefillGems.png` by name until 02 and 10 arrive. Replay of 01→09 reaches `COMPLETED`.
+
+The repository previously had **zero** full-screen game captures. `assets/` still holds ~170 small template crops — enough to feed the matcher. The eight delivered window crops are what let us test it.
 
 ## How to capture
 
@@ -23,7 +41,7 @@ That means Windows display scaling is not at 100%: at 125% scaling, a "900×600"
 
 ### Capture helper
 
-There is no screenshot tool in `helper_scripts/` yet. The simplest reliable approach, using the same capture path `utils/ocr_handler.py` already uses:
+Use [`helper_scripts/capture_arena_screenshots.py`](../../helper_scripts/capture_arena_screenshots.py) on the Windows game machine. It writes into `tests/screenshots/` relative to the repo root (no hardcoded drive paths). Manual one-off:
 
 ```python
 import pygetwindow as gw
@@ -34,8 +52,6 @@ im = ImageGrab.grab(bbox=(w.left, w.top, w.left + w.width, w.top + w.height))
 print(im.size)  # expect (900, 600)
 im.save("01_bastion.png")
 ```
-
-Worth adding to `helper_scripts/` so the same code can be reused for future captures.
 
 **Keep the game on the primary monitor.** PyAutoGUI captures only the primary display by default (`ImageGrab.grab(all_screens=False)`), so the bot cannot see a window on a second screen anyway. Capturing from one is a silent trap.
 
@@ -66,7 +82,7 @@ Notes:
 
 - **02** is opportunistic — capture it whenever an ad appears. If ads have stopped appearing, say so and the developer will skip that assertion.
 - **10** only shows up when Arena tokens are actually exhausted, so grab it at the end of a session. It is worth the wait: it is the guard that stops the bot spending real gems, and it is the one node we most want tested.
-- **07** and **08** are not used by the Phase 1 config but cost nothing while you are there, and the next sequence will want them.
+- **07** and **08** are not used by the Phase 1 config but cost nothing while you are there, and the next sequence will want them. Current 07/08 deliveries do not match `loadingScreen.png` / `inBattle.png` — re-capture or refresh those crops when convenient.
 
 ## Failure case — required for Phase 2 and 3
 
