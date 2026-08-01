@@ -17,7 +17,7 @@
 | 08 | `08_mid_battle.png` | Delivered (900×600) | `inBattle.png` does **not** match; `tapToContinue.png` *does* match (capture may be late-battle/results) |
 | 09 | `09_battle_results.png` | Delivered (900×600) | `tapToContinue.png` matches |
 | 10 | `10_out_of_tokens.png` | **Outstanding** | Completes PR 1.4 gem-refill guard coverage — high priority |
-| 11 | (any lost screen) | **Outstanding** | **Hard blocker for Phase 3.** Easiest route is now a crash dump — see below |
+| 11 | (any lost screen) | **Outstanding** | No longer blocks Phase 3 — it is a realism check on the finished tool. Easiest route is now a crash dump — see below |
 
 Phase 1 offline work shipped against 01 and 03–09. `tests/test_assets_match.py` skips `exitAdd.png` and `ArenaRefillGems.png` by name until 02 and 10 arrive. Replay of 01→09 reaches `COMPLETED`.
 
@@ -84,13 +84,15 @@ Notes:
 - **10** only shows up when Arena tokens are actually exhausted, so grab it at the end of a session. It is worth the wait: it is the guard that stops the bot spending real gems, and it is the one node we most want tested.
 - **07** and **08** are not used by the Phase 1 config but cost nothing while you are there, and the next sequence will want them. Current 07/08 deliveries do not match `loadingScreen.png` / `inBattle.png` — re-capture or refresh those crops when convenient.
 
-## Failure case — required for Phase 3
+## Failure case — wanted for Phase 3, no longer blocking it
 
 | # | Screen | Purpose |
 |---|---|---|
 | 11 | Any screen where the bot would be lost — an unexpected modal, an event popup, a login screen, mid-transition | The realistic input for the HITL crop tool |
 
 Anything genuinely unexpected works. A real one from a failed run is ideal; a plausible stand-in is fine.
+
+**This is no longer a gate on starting Phase 3.** Phase 3 can be built and tested against a dump generated from capture 05. What capture 11 uniquely gives us is a screen with something genuinely *unanticipated* on it, which is the only honest way to check the repair tool helps in the situation it exists for. So it is still wanted — just as a review step on the finished tool rather than a blocker on writing it.
 
 ### The bot can capture this one for you (easiest route)
 

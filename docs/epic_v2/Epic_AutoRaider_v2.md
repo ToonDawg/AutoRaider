@@ -101,7 +101,7 @@ Ship in order. Each phase must be demonstrably working before the next starts.
 |---|---|---|---|
 | 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | **DONE (offline)** — PRs 1.1–1.4 shipped; live smoke run still open | Optional for core; required for the asset-match check (PR 1.4) |
 | 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **DONE (offline)** — PRs 2.1–2.2 shipped; live failure run still open | No, for the implementation. A live failed run now *produces* capture 11 |
-| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | Blocked on capture 11 | **Yes, hard blocker** — the UI is meaningless without real captures |
+| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | **NEXT** | Captures 01, 03–09 are enough to build and test it. Capture 11 is a realism check, no longer a gate |
 | 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | Not started | Yes, per module migrated |
 
 Supporting document: [Screenshots Required](./Screenshots_Required.md) — the capture checklist for whoever has game access.
@@ -124,13 +124,16 @@ Supporting document: [Screenshots Required](./Screenshots_Required.md) — the c
 
 Suite is now `43 passed, 2 skipped` on macOS with no game.
 
-### Next task: Phase 3, once capture 11 exists
+### Next task: Phase 3 — and it is no longer blocked
 
-See [Ticket 3](./Ticket_3_Phase3_HITL.md). **Do not start it until capture 11 exists** — the UI has nothing to display without it.
+See [Ticket 3](./Ticket_3_Phase3_HITL.md), which now opens with a **How a senior would do this** section. The short version:
 
-The cheapest way to get capture 11 is now one deliberately-failed live v2 run: the Phase 2 crash dump writes a 900×600 PNG of whatever screen the bot was stuck on, which is exactly what Phase 3 needs and closes PR 2.2 acceptance #2 at the same time. Details in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups).
+1. **Stop waiting for capture 11.** That gate was set when the repo had zero captures. Eight are delivered and Phase 2 ships a dump writer, so the fixture can be *generated*: drive `ScreenshotScreen` over `05_arena_opponent_list.png` with a deliberately-broken target, and `write_crash_dump` produces a real dump pair. Capture 11 remains worth asking for as a realism check on the finished tool.
+2. **Build inside-out: PR 3.3, then 3.2, then 3.1.** The YAML mutation and the crop are pure functions with sharp acceptance criteria. The CustomTkinter window is a thin view over them and the only part with no automated coverage.
+3. **Split `hitl/repair.py` from `hitl/app.py`.** `_tkinter` is not even importable in this Python, which enforces the seam for free — the same lesson as `pyautogui` in Phase 1 and `pygetwindow` in Phase 2.
+4. **Land the `missing_assets` recursive-walk change first, on its own.** PR 3.3's validation depends on it and it is the one permitted edit to Phase 1 code.
 
-If the game machine is free, the Phase 1 live smoke run is still the only outstanding gate that proves clicks actually work.
+If the game machine is free, the Phase 1 live smoke run is still the only outstanding gate that proves clicks actually work, and one deliberately-failed live run also delivers capture 11 — details in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups).
 
 ## Definition of done for the epic
 

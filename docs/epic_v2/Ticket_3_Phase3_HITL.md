@@ -4,7 +4,84 @@
 
 **Depends on:** Phase 2 (crash dumps exist and record `config_path` + `failed_node`). **Met** — `engine/dump.py` writes both fields; the exact file shape is in [Ticket 2 → PR 2.1](./Ticket_2_Phase2_Telemetry.md#files).
 
-**Game access needed?** No. **Screenshots needed? Yes — this is a hard blocker.** The tool is unbuildable and untestable without realistic 900×600 game-window captures. See [Screenshots Required](./Screenshots_Required.md), captures 1–11.
+**Game access needed?** No. **Screenshots needed?** Captures 01 and 03–09 are delivered and are enough to build and test all three PRs. Capture 11 is a realism check, not a structural blocker — see below.
+
+## How a senior would do this
+
+### 1. The capture-11 blocker is weaker than it looks — re-scope it
+
+The epic calls capture 11 a hard blocker. That was written when the repository held **zero** full-screen captures. Eight are delivered now, and Phase 2 ships a dump writer, so the situation has changed and the blocker should be re-read rather than inherited.
+
+Work through what each PR actually needs:
+
+| PR | Needs | Have it? |
+|---|---|---|
+| 3.3 config mutation | A YAML file and a dump JSON | Yes — no image involved at all |
+| 3.2 crop | Any 900×600 capture and a known region | Yes — eight of them |
+| 3.1 viewer | A dump pair to display | Yes, once one is generated |
+
+Nothing on that list requires a screen the bot was genuinely lost on. **Generate the fixture instead of waiting for it**, using the code that already exists:
+
+- `ScreenshotScreen` (PR 1.4) drives the engine against `05_arena_opponent_list.png`.
+- Point a copy of the config's `select_opponent` target at an asset that will not match.
+- `run_sequence` (PR 2.2) reaches `ABORTED`, and `write_crash_dump` (PR 2.1) writes a real, self-consistent dump pair whose PNG is capture 05.
+
+That fixture is worth more than a hand-written JSON because the real writer produced it — if the dump format drifts, the Phase 3 tests break, which is exactly what you want. Build it as a pytest fixture, not a checked-in artifact.
+
+What capture 11 still buys, and why it is worth asking for anyway: it is the only way to confirm the tool helps in the case it exists to serve — a screen with something *unanticipated* on it. Treat that as a review step once the capture arrives, not as a gate on writing code. And note the shortcut in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups): a deliberately-failed live run now produces capture 11 by itself.
+
+### 2. Build it inside-out: 3.3, then 3.2, then 3.1
+
+The PRs are numbered UI-first. Build them in the opposite order.
+
+The YAML mutation and the crop are pure functions with sharp acceptance criteria and no GUI. The CustomTkinter window is a thin view over them, and it is the only part with no meaningful automated coverage. Build the UI first and the phase is spent clicking around a window to test logic that could have been asserted in milliseconds. Build the core first and the window is ~150 lines of wiring over already-proven functions.
+
+There is also a hard dependency in that direction: PR 3.3's validation step needs the `missing_assets` change (see below), and PR 3.1 has nothing to display until a dump fixture exists.
+
+### 3. Same seam discipline as Phases 1 and 2 — and this time the OS enforces it
+
+`_tkinter` is **not available in this Python at all** (`brew install python-tk@3.13` is needed, and `customtkinter` is not in `requirements-dev.txt` yet). So the suite currently cannot import a GUI module even if it wanted to.
+
+Do not treat that as a problem to fix before starting. Treat it as the same lesson Phase 1 learned about `pyautogui` and Phase 2 learned about `pygetwindow`, now enforced for free:
+
+```
+hitl/repair.py   # pure: load dump, crop, rewrite YAML, validate. No tkinter.
+hitl/app.py      # CustomTkinter window. Imported by nothing except __main__.
+hitl/__main__.py # python -m hitl
+```
+
+Tests import `repair.py` only. Add the guard that `tests/test_seam.py` already has for `engine.runner` and `engine.run`: importing `hitl.repair` must not pull in `tkinter` or `customtkinter`. Install python-tk when you want to *look* at the window, not to run the suite.
+
+### 4. Prove the crop with a round-trip, not a pixel comparison
+
+Acceptance 3.2 #2 asks for pixel-identity between the crop and the source region. Go one better, because it costs one line and catches strictly more:
+
+```python
+box = pyscreeze.locate(str(new_crop), str(source_screenshot), confidence=0.8)
+assert (box.left, box.top) == (crop_x, crop_y)
+```
+
+Crop a region, then locate the crop in the image it came from and assert it comes back **at the coordinates you cropped from**. Pixel equality proves the bytes match; this proves the coordinate space is right end to end, which is the bug this tool is actually prone to. It is also acceptance 3.3 #5 in miniature.
+
+### 5. `missing_assets` is the one permitted edit to Phase 1 code — land it first, alone
+
+PR 3.3 needs targets like `dynamic/foo.png` to validate, and `missing_assets` currently does a flat `assets_dir.iterdir()`. Switch it to a recursive walk producing paths relative to the assets root.
+
+Two things not to break: it must keep comparing against **real directory entries** rather than `Path.exists()` (that is what catches case mismatches on macOS and Windows), and `tests/test_models.py` already asserts that behaviour. Ship it as its own small commit ahead of the UI work so a regression there is unambiguous.
+
+`assets/dynamic/` does not exist yet — PR 3.2 has to create it, and something needs to keep it in git.
+
+### 6. Restore from bytes, not from the parse tree
+
+Acceptance 3.3 #4 wants an invalid result to leave the file untouched. Read the original file's **text** before writing, and restore that text on failure. Do not "restore" by re-serialising the ruamel tree — that is the code path you are trying to prove is safe, so it is the last thing to trust when it has already produced a bad result.
+
+### 7. Sharpen "comments survive" into a one-line diff
+
+Acceptance 3.3 #2 says formatting elsewhere is byte-identical. State it as a test that is impossible to fudge: after a repair, the diff against the original is **exactly one line changed**. That single assertion covers comment preservation, `note:` survival, key order, quoting style, and indentation all at once — and it is the reason `ruamel.yaml` is mandated over PyYAML.
+
+### 8. Definition of done for this ticket
+
+A dump generated from capture 05 can be opened, a fresh target cropped from it, and `configs/arena_v2.yaml` rewritten — with a one-line diff, passing validation, and the new crop provably locatable in the screenshot it came from. The GUI is the least interesting part of that sentence, which is the correct outcome.
 
 ## Scope
 
