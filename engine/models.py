@@ -56,11 +56,21 @@ class SequenceConfig(BaseModel):
 def missing_assets(config: SequenceConfig, assets_dir: Path) -> list[str]:
     """Return targets of image actions that have no matching file in assets/.
 
-    Compares against an actual directory listing rather than Path.exists(),
+    Walks assets/ recursively and compares against posix-relative paths
+    (e.g. ``arenaBattle.png``, ``dynamic/foo.png``) rather than Path.exists(),
     because macOS and Windows filesystems are case-insensitive and would
-    silently accept a case-mismatched filename.
+    silently accept a case-mismatched filename. ``as_posix()`` keeps the
+    comparison stable on Windows where ``str(Path)`` would use backslashes.
     """
-    names = {p.name for p in assets_dir.iterdir()} if assets_dir.is_dir() else set()
+    names = (
+        {
+            p.relative_to(assets_dir).as_posix()
+            for p in assets_dir.rglob("*")
+            if p.is_file()
+        }
+        if assets_dir.is_dir()
+        else set()
+    )
     missing: list[str] = []
     for node in config.nodes.values():
         if node.action not in _IMAGE_ACTIONS:

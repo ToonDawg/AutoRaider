@@ -117,3 +117,30 @@ def test_missing_assets_skips_press_key(tmp_path: Path):
         {"a": ActionNode(action=Action.PRESS_KEY, target="esc")}
     )
     assert missing_assets(config, tmp_path) == []
+
+
+def test_missing_assets_finds_subdirectory_targets(tmp_path: Path):
+    (tmp_path / "battleBTN.png").write_bytes(b"x")
+    dynamic = tmp_path / "dynamic"
+    dynamic.mkdir()
+    (dynamic / "foo.png").write_bytes(b"x")
+
+    config = _config(
+        {
+            "a": ActionNode(
+                action=Action.CLICK_IMAGE,
+                target="battleBTN.png",
+                on_success="b",
+            ),
+            "b": ActionNode(
+                action=Action.CLICK_IMAGE,
+                target="dynamic/foo.png",
+                on_success="c",
+            ),
+            "c": ActionNode(
+                action=Action.CLICK_IMAGE,
+                target="dynamic/missing.png",
+            ),
+        }
+    )
+    assert missing_assets(config, tmp_path) == ["dynamic/missing.png"]
