@@ -132,9 +132,10 @@ Suite is now `43 passed, 2 skipped` on macOS with no game.
 - [x] `missing_assets` recursive walk (posix-relative paths) — own commit ahead of the UI
 - [x] PR 3.3 — `hitl/repair.py` rewrite with ruamel (`width=4096` + null representer); one-line-diff + restore-from-bytes tests
 - [x] PR 3.2 — `crop_target` with dimension, pixel-identity, and locate round-trip tests; `assets/dynamic/`
-- [x] PR 3.1 — `hitl/app.py` CustomTkinter window + `python -m hitl` — **written, never opened** (no `_tkinter` on the build machine)
-- [x] Seam guard: importing `hitl.repair` pulls in neither `tkinter` nor `customtkinter`
-- [ ] GUI smoke-test on a machine with python-tk / Windows — see [Ticket 3 → Windows follow-ups](./Ticket_3_Phase3_HITL.md#windows-follow-ups)
+- [x] PR 3.1 — `hitl/app.py` CustomTkinter window + `python -m hitl` — opened and driven on macOS after `brew install python-tk@3.13`
+- [x] Seam guard: importing `hitl.repair` pulls in neither `tkinter` nor `customtkinter` — now meaningful, since customtkinter is installed in the venv
+- [x] GUI smoke-test — all six checklist points pass via `helper_scripts/hitl_smoke.py` (20 assertions against the real window)
+- [ ] One human check: a **real mouse drag** on the canvas. The smoke script injects synthetic coordinates, which steps over the pointer → image-pixel mapping where the scaling trap lives
 - [ ] Capture 11 realism check on the finished tool
 
 Suite after Phase 3: `55 passed, 2 skipped` on macOS with no game.

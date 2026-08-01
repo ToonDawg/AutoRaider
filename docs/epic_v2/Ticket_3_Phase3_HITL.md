@@ -1,6 +1,6 @@
 # Phase 3: Human-In-The-Loop Authoring UI
 
-**Status: DONE (offline) — 2026-08-01.** PRs 3.1–3.3 shipped. Suite: `55 passed, 2 skipped` on macOS with no game (was 43/2 after Phase 2). The pure repair core is tested; the CustomTkinter window is written but **unverified** on this machine (`_tkinter` missing). See [Windows follow-ups](#windows-follow-ups) below.
+**Status: DONE — 2026-08-01.** PRs 3.1–3.3 shipped. The pure repair core is tested in the suite; the CustomTkinter window was then opened on macOS after `brew install python-tk@3.13` and driven through all six checklist points by `helper_scripts/hitl_smoke.py`. One human check remains — a real mouse drag, which the smoke script cannot simulate honestly. See [Windows follow-ups](#windows-follow-ups) below.
 
 **Goal:** repair a broken image target by re-cropping it from the crash screenshot, without opening an editor.
 
@@ -200,26 +200,22 @@ The draft used *"Failed looking for `assets/victory.png` at node `check_victory_
 
 ## Windows follow-ups
 
-Everything below needs a machine with a display toolkit (and, for some items, the game). The pure repair core is already tested on macOS. **The CustomTkinter window was written on a machine without `_tkinter` and has never been opened** — treat every claim about how it looks as something to check, not something proven.
+Everything below needs a machine with a display toolkit (and, for some items, the game). The pure repair core is tested on macOS, and as of 2026-08-01 **the window itself has been opened and driven** — see item 1 for exactly how much of it that proves.
 
-### 1. Smoke-test the HITL window (you can do this without the game)
+### 1. Smoke-test the HITL window — DONE on macOS, with one human check left
 
-This Python on the Mac that built Phase 3 is Homebrew 3.13 **without** `python-tk`, and `customtkinter` is deliberately **not** in `requirements-dev.txt` (tests never import `hitl.app`, so adding it would only make the seam violable). On Windows the full `requirements.txt` already includes `customtkinter`.
-
-```text
-pip install -r requirements.txt          # includes customtkinter
-python -m hitl                           # opens the repair window
-```
-
-If you are on macOS instead:
+`brew install python-tk@3.13` turned out to be all that stood between this Mac and the window. `customtkinter` went into the venv only; it stays out of `requirements-dev.txt` (tests never import `hitl.app`, and adding it would only make the seam violable). Having it installed makes the seam guard *stronger*, not weaker — before, `assert 'customtkinter' not in sys.modules` could pass simply because the package did not exist.
 
 ```text
-brew install python-tk@3.13
-pip install customtkinter
-python -m hitl
+brew install python-tk@3.13 && pip install customtkinter   # macOS
+pip install -r requirements.txt                            # Windows, already includes it
+
+python -m helper_scripts.make_sample_dump    # a real dump in logs/dumps/, no game needed
+python -m helper_scripts.hitl_smoke          # drives the window, checks the six points below
+python -m hitl                               # then look at it
 ```
 
-What "correct" looks like:
+All six points now pass mechanically — 20 assertions in `helper_scripts/hitl_smoke.py`, which constructs the real window, selects dumps, simulates the drag and applies a repair, then restores the config and deletes the crop it made:
 
 1. Dumps under `logs/dumps/` are listed newest first, labelled with timestamp, sequence name, and failed node.
 2. Selecting one shows the screenshot **at 1:1** (900×600 canvas pixels = image pixels), the parsed context, and the current target template image beside it.
@@ -228,14 +224,14 @@ What "correct" looks like:
 5. A dump whose PNG is missing shows an error in the context pane rather than crashing the window.
 6. If a loaded image is not 900×600, a warning appears and the image is still shown at 1:1 in a scrollable canvas — never silently scaled.
 
+**What this does not prove, and why it still matters.** The smoke script injects synthetic drag coordinates straight into the canvas handlers, so it steps over the one mapping a human uses: pointer position → canvas coordinate → image pixel. That is exactly where the scaling trap lives. **Someone still has to drag over a landmark with a real mouse and confirm the toolbar numbers are image pixels** — pick something whose position you can check independently, drag its bounding box, and verify the reported `left/top` against where it actually sits in the PNG. It also cannot judge layout, contrast or clipping. Open the window and look at it.
+
 **The classic bug to watch for:** if crops look right in the UI but fail to match at confidence 0.8 afterwards, the window is scaling the screenshot. Report that immediately; do not "fix" it by adjusting confidence.
 
-To generate a dump without the game (same fixture the tests use):
+Two findings from the smoke run, neither fixed:
 
-```text
-python -m pytest tests/test_repair.py::test_end_to_end_repair_from_generated_dump -q
-# Or produce a real dump pair into logs/dumps/ from a deliberately-failed live run (item 2).
-```
+- **CustomTkinter warns on the target thumbnail.** `_show_target` hands a raw `ImageTk.PhotoImage` to a `CTkLabel`, which warns that it cannot scale it on a HiDPI display. Harmless — the thumbnail is informational and feeds no coordinates, and the screenshot canvas is a raw `tk.Canvas` that this does not touch. Switching to `CTkImage` would silence it by introducing scaling into the one tool whose entire discipline is not scaling, so it is left for the epic owner to call.
+- **`pyscreeze.locate` returns the first match above the threshold in raster order, not the best one.** A crop taken at `top=228` located back at `top=227`, because that row scores 0.865 — over the 0.8 threshold and earlier in the scan. The crop was verified pixel-identical to its source region and OpenCV's argmax is exactly right, so this is the matcher's behaviour, not a crop bug. It applies equally to the live bot, which uses the same matcher. Assert crop round-trips with a small tolerance, not equality.
 
 ### 2. Capture 11 — realism check on the finished tool
 

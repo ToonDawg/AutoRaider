@@ -23,11 +23,21 @@ pip install -r requirements.txt     # the full set; pywin32 and customtkinter ar
 |---|---|---|---|
 | 1 | Live smoke, window-scoped | PR 1.3 acceptance #4 | below |
 | 2 | Live smoke, full screen | PR 4.1 geometry parity | below |
-| 3 | HITL window smoke | Phase 3 GUI unverified | [Ticket 3](./Ticket_3_Phase3_HITL.md#1-smoke-test-the-hitl-window-you-can-do-this-without-the-game) |
+| 3 | HITL real-mouse drag | the last unverified bit of Phase 3 | [Ticket 3](./Ticket_3_Phase3_HITL.md#1-smoke-test-the-hitl-window--done-on-macos-with-one-human-check-left) |
 | 4 | Deliberately-failed run | PR 2.2 acceptance #2 + capture 11 | [Ticket 2](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups) |
 | 5 | `classic_arena_v2` from the GUI | PR 4.1 acceptance | below |
 
 Runs 3 and 4 feed each other: run 4 produces a real dump, which is the most realistic thing you can point the run-3 window at. Do run 4 first if you only have time for one.
+
+Run 3 is now small. The HITL window was opened on macOS and driven through its whole checklist mechanically, so all that is left is the part a script cannot fake:
+
+```text
+python -m helper_scripts.make_sample_dump   # only if logs/dumps/ is empty
+python -m helper_scripts.hitl_smoke         # should report all checks passing
+python -m hitl
+```
+
+Then drag a real rectangle around a landmark you can locate independently, and confirm the toolbar's `left/top/width/height` are image pixels — not display pixels, not scaled. That mapping is the one thing the smoke script steps over, and it is where the scaling bug would hide.
 
 ---
 
