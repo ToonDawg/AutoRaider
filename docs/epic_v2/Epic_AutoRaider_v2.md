@@ -102,9 +102,12 @@ Ship in order. Each phase must be demonstrably working before the next starts.
 | 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | **DONE (offline)** — PRs 1.1–1.4 shipped; live smoke run still open | Optional for core; required for the asset-match check (PR 1.4) |
 | 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **DONE (offline)** — PRs 2.1–2.2 shipped; live failure run still open | No, for the implementation. A live failed run now *produces* capture 11 |
 | 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | **DONE (offline)** — PRs 3.1–3.3 shipped; GUI unverified without `_tkinter` | Captures 01, 03–09 were enough. Capture 11 is a realism check |
-| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | **NEXT** | Yes, per module migrated |
+| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | **IN PROGRESS** — PR 4.1 shipped (offline); 4.2 gated, 4.3 not started | Yes, per module migrated |
 
-Supporting document: [Screenshots Required](./Screenshots_Required.md) — the capture checklist for whoever has game access.
+Supporting documents:
+
+- [Screenshots Required](./Screenshots_Required.md) — the capture checklist for whoever has game access.
+- [Windows live-run runbook](./Windows_Live_Runbook.md) — every outstanding live proof, in the order to do them.
 
 ### Phase 1 offline checklist (shipped 2026-08-01)
 
@@ -136,9 +139,25 @@ Suite is now `43 passed, 2 skipped` on macOS with no game.
 
 Suite after Phase 3: `55 passed, 2 skipped` on macOS with no game.
 
-### Next task: Phase 4 — migration
+### Phase 4 checklist (PR 4.1 shipped 2026-08-01)
 
-See [Ticket 4](./Ticket_4_Phase4_Migration.md). Phase 3's remaining work is all on the game machine (GUI smoke-test, capture 11) and does not block starting Phase 4 planning, but the Phase 1 live smoke run is still the only outstanding gate that proves clicks actually work — details in [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups).
+- [x] PR 4.1 — `engine/sequence_command.py`; `classic_arena_v2` registered **beside** v1, off in every preset
+- [x] Counter question — option 1 (repeat on the caller) built and recommended; [awaiting owner sign-off](./Ticket_4_Phase4_Migration.md#recommendation-option-1-awaiting-sign-off), and nothing depends on it until 4.2
+- [ ] PR 4.1 acceptance 1–3 — **live, on the game machine** ([runbook run 5](./Windows_Live_Runbook.md#5-classic_arena_v2-from-the-gui))
+- [ ] PR 4.2 — **gated.** Needs the soak *and* one real failure fixed through the HITL tool with no Python edits
+- [ ] PR 4.3 — one second module, after 4.2
+
+Suite after PR 4.1: `65 passed, 2 skipped` on macOS with no game.
+
+New finding from PR 4.1: **an in-app v2 run is not window-scoped.** The app builds `ClickHandler` without a `region_provider`, so it searches the whole desktop while `python -m engine.run` searches the game window. Left alone rather than fixed, because changing it would change matching for all eight v1 commands. See [Ticket 4 → Finding](./Ticket_4_Phase4_Migration.md#finding-the-in-app-path-is-not-window-scoped).
+
+### Next task: live proof, then the PR 4.2 gate
+
+The blocking work is now all on the game machine, and it is sequenced in the [Windows live-run runbook](./Windows_Live_Runbook.md): the Phase 1 live smoke run is still the only thing that would prove a v2 click lands at all, and the deliberately-failed run is what produces both the Phase 2 evidence and capture 11.
+
+PR 4.2 does not start until one real failure has been diagnosed and repaired entirely through `python -m hitl`. That criterion is the epic's premise, not a checkbox — if it cannot be met, the right outcome is to stop at PR 4.1 and say so.
+
+Still deliberately not fixed: `back_to_bastion()`'s unbounded ESC loop ([Ticket 2](./Ticket_2_Phase2_Telemetry.md#known-risk-not-fixed-here)). It needs its own ticket from the epic owner and is not a drive-by for any Phase 4 PR.
 
 ## Definition of done for the epic
 

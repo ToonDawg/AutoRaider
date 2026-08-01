@@ -16,6 +16,7 @@ from Modules.daily_quests.RewardsCommand import RewardsCommand
 from Modules.doom_tower.DoomTower import DoomTowerCommand
 from Modules.dungeons.IronTwins import IronTwinsCommand
 from Modules.faction_wars.FactionWars import FactionWarsCommand
+from engine.sequence_command import ARENA_V2_CONFIG, SequenceCommand
 from utils.base_command import CommandBase
 from utils.command_factory import CommandFactory, CommandKeys
 from utils.click_handler import ClickHandler
@@ -44,6 +45,15 @@ class AutoRaider:
         self.command_factory.register_command(CommandKeys.CLANBOSS, "Clan Boss", ClanBossCommand)
         self.command_factory.register_command(CommandKeys.REWARDS, "Collect Rewards", RewardsCommand)
         self.command_factory.register_command(CommandKeys.FACTION_WARS, "Faction Wars", FactionWarsCommand)
+
+        # v2 engine, alongside the v1 Classic Arena above — not replacing it.
+        # One battle per run so a manual run can be watched end to end; the
+        # repeat count moves to the caller when Daily Quests migrates.
+        self.command_factory.register_command(
+            CommandKeys.CLASSIC_ARENA_V2,
+            "Classic Arena (v2 engine)",
+            SequenceCommand.bind(ARENA_V2_CONFIG),
+        )
 
         # Initialization steps
         self.os = self.check_os()

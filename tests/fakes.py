@@ -48,3 +48,25 @@ class FakeScreen:
 
     def press_key(self, key: str, description: str = "") -> None:
         self._record("press_key", (key,), {"description": description})
+
+
+class FakeClickHandler(FakeScreen):
+    """FakeScreen plus the parts of ClickHandler that are not in ScreenActions.
+
+    `SequenceCommand` reaches past the protocol for `region` and for the two
+    cleanup calls, so a double for it needs more than a plain FakeScreen.
+    """
+
+    def __init__(
+        self,
+        results: dict[str, list[bool]] | None = None,
+        region: tuple[int, int, int, int] | None = None,
+    ) -> None:
+        super().__init__(results)
+        self.region = region
+
+    def back_to_bastion(self) -> None:
+        self._record("back_to_bastion", (), {})
+
+    def delete_popup(self) -> None:
+        self._record("delete_popup", (), {})

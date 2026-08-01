@@ -4,7 +4,9 @@ Builds a real ClickHandler (Windows + game required) and walks the YAML.
 Does not touch main.py, the GUI, the scheduler, or Modules/.
 
 `main()` is Windows-only. `run_sequence()` — which owns the load-bearing
-dump-before-recover ordering — is not, and is unit tested on any OS.
+dump-before-recover ordering — is not, and is unit tested on any OS. It and
+`screen_grabber()` are shared with `engine.sequence_command`, so the CLI and
+the in-app adapter cannot drift apart on dump ordering or capture geometry.
 
 Live smoke run (PR 1.3 acceptance #4) is a Windows follow-up.
 """
@@ -80,7 +82,7 @@ def run_sequence(
             logger.exception("Cleanup (back_to_bastion / delete_popup) failed")
 
 
-def _screen_grabber(
+def screen_grabber(
     region: tuple[int, int, int, int] | None,
 ) -> Callable[[], Image]:
     """Capture the region the matcher was searching, so a dump shows exactly
@@ -178,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         args.config,
         click_handler,
         logger,
-        grab_screen=_screen_grabber(resolved),
+        grab_screen=screen_grabber(resolved),
         region=resolved,
         recover=recover,
     )
