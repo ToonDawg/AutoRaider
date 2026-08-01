@@ -18,7 +18,11 @@ class TasksTab:
         self.parent.grid_rowconfigure(0, weight=1)
         raw_items = self.config_handler.read_setting("SelectionItems", "items") or "['Tasks']"
         if isinstance(raw_items, str):
-            self.selection_items = [item.strip().strip("'") for item in raw_items.strip("[]").split(',')]
+            stripped_items = raw_items.strip("[]").strip()
+            if not stripped_items:
+                self.selection_items = ["Tasks"]
+            else:
+                self.selection_items = [item.strip().strip("'") for item in stripped_items.split(',')]
         elif isinstance(raw_items, list):
             self.selection_items = raw_items
         else:
@@ -107,7 +111,7 @@ class TasksTab:
             ).grid(row=(i // 4) + 1, column=i % 4, padx=10, pady=5, sticky="w")
 
     def _create_action_buttons(self) -> None:
-        button_row = (len(self.checkbox_vars) // 4) + 2
+        button_row = ((len(self.checkbox_vars) - 1) // 4) + 3
 
         manual_run_button = ctk.CTkButton(
             self.parent,
@@ -126,6 +130,7 @@ class TasksTab:
         quit_all_button.grid(row=button_row, column=3, padx=10, pady=(10, 0), sticky="w")
 
     def _create_log_textbox(self) -> None:
+        log_row = ((len(self.checkbox_vars) - 1) // 4) + 2
         self.log_text = ctk.CTkTextbox(
             self.parent,
             wrap="word",
@@ -133,7 +138,7 @@ class TasksTab:
             width=400,
             height=200
         )
-        self.log_text.grid(row=3, column=0, columnspan=4, sticky="nsew", padx=10, pady=10)
+        self.log_text.grid(row=log_row, column=0, columnspan=4, sticky="nsew", padx=10, pady=10)
 
     def update_selection(self, selection: str) -> None:
         if selection in ("Select All", "Deselect"):

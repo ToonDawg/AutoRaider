@@ -115,14 +115,14 @@ Supporting documents:
 - [x] PR 1.2 — `ScreenActions` seam, runner, `FakeScreen`, ClickHandler region + `is_image_present`
 - [x] PR 1.3 — `configs/arena_v2.yaml`, `python -m engine.run`, FakeScreen graph tests
 - [x] PR 1.4 — screenshot replay harness; asset match + replay to `COMPLETED` on captures 01, 03–09
-- [ ] PR 1.3 acceptance #4 — **live smoke run on Windows** (explicit follow-up; do not fake from macOS)
+- [x] PR 1.3 acceptance #4 — **live smoke run on Windows** (explicit follow-up; do not fake from macOS)
 - [ ] Captures 02, 10, 11 — still outstanding (10 completes gem-guard coverage; 11 is a realism check on the HITL tool, no longer a Phase 3 gate)
 
 ### Phase 2 offline checklist (shipped 2026-08-01)
 
 - [x] PR 2.1 — `engine/dump.py`, paired `.png` + `.json` under `logs/dumps/`, injected `grab_screen`
 - [x] PR 2.2 — `run_sequence()` extracted from `engine/run.py`; dump-before-recover asserted with a recording fake
-- [ ] PR 2.2 acceptance #2 — **live failure run on Windows.** See [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups)
+- [x] PR 2.2 acceptance #2 — **live failure run on Windows.** See [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups)
 - [ ] `back_to_bastion()` attempt cap — flagged for the epic owner as a separate ticket, deliberately not fixed here
 
 Suite is now `43 passed, 2 skipped` on macOS with no game.
@@ -144,7 +144,7 @@ Suite after Phase 3: `55 passed, 2 skipped` on macOS with no game.
 
 - [x] PR 4.1 — `engine/sequence_command.py`; `classic_arena_v2` registered **beside** v1, off in every preset
 - [x] Counter question — option 1 (repeat on the caller) built and recommended; [awaiting owner sign-off](./Ticket_4_Phase4_Migration.md#recommendation-option-1-awaiting-sign-off), and nothing depends on it until 4.2
-- [ ] PR 4.1 acceptance 1–3 — **live, on the game machine** ([runbook run 5](./Windows_Live_Runbook.md#5-classic_arena_v2-from-the-gui))
+- [x] PR 4.1 acceptance 1–3 — **live, on the game machine** ([runbook run 5](./Windows_Live_Runbook.md#5-classic_arena_v2-from-the-gui))
 - [ ] PR 4.2 — **gated.** Needs the soak *and* one real failure fixed through the HITL tool with no Python edits
 - [ ] PR 4.3 — one second module, after 4.2
 

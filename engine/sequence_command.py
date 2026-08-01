@@ -85,13 +85,19 @@ class SequenceCommand(CommandBase):
             )
         grab_screen = self._grab_screen or screen_grabber(region)
 
-        for attempt in range(1, self.repeat + 1):
+        # Read dynamic repeat override if set by the GUI V2 Tab
+        try:
+            dynamic_repeat = int(self.app.config_handler.read_setting("V2_Settings", "arena_repeats", str(self.repeat)))
+        except ValueError:
+            dynamic_repeat = self.repeat
+
+        for attempt in range(1, dynamic_repeat + 1):
             self.logger.info(
                 "Running sequence %r from %s — attempt %s of %s",
                 config.name,
                 self.config_path,
                 attempt,
-                self.repeat,
+                dynamic_repeat,
             )
             try:
                 result = run_sequence(
@@ -110,7 +116,7 @@ class SequenceCommand(CommandBase):
                 self.logger.info(
                     "Cancelled by the user during attempt %s of %s.",
                     attempt,
-                    self.repeat,
+                    dynamic_repeat,
                 )
                 raise
 
@@ -120,7 +126,7 @@ class SequenceCommand(CommandBase):
                     "The bot's state is unknown, so the remaining attempts are "
                     "skipped; the crash dump under %s is the input to the HITL tool.",
                     attempt,
-                    self.repeat,
+                    dynamic_repeat,
                     result.outcome.value,
                     result.last_node,
                     self._dumps_dir,

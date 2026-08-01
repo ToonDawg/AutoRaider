@@ -209,6 +209,8 @@ class AutoRaider:
         self.click_handler.cancel_flag = False
         self.make_sure_raid_is_open()
 
+        # Reload configuration to ensure we have the latest changes from the GUI
+        self.config_handler.config.read(self.config_handler.config_file)
         
         # Retrieve the entire "Tasks" section as a dictionary
         task_section = self.config_handler.read_setting(task_name, None)

@@ -4,6 +4,7 @@ from utils.config_handler import ConfigHandler
 from utils.text_handler import TextHandler
 from gui.tasks_tab import TasksTab
 from gui.scheduling_tab import SchedulingTab
+from gui.v2_tab import V2Tab
 import logging
 from typing import Dict, Any
 import pystray
@@ -119,6 +120,10 @@ class MainGUI:
         # Scheduling Tab
         self.scheduling_tab = self.tab_view.add("Scheduling")
         self.scheduling_tab_instance = SchedulingTab(self.scheduling_tab, self.config_handler, self.py_auto_raid)
+
+        # V2 Engine Tab
+        self.v2_tab = self.tab_view.add("V2 Engine")
+        self.v2_tab_instance = V2Tab(self.v2_tab, self.config_handler, self.py_auto_raid)
 
     def _setup_logging(self) -> None:
         text_handler = TextHandler(self.log_text)
