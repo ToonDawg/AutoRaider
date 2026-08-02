@@ -1,0 +1,37 @@
+# configs/rewards/timed_rewards_v2.yaml
+name: "Rewards - timed play rewards"
+start_node: wait_timed
+
+nodes:
+  wait_timed:
+    action: WAIT_FOR_IMAGE
+    target: timeRewards.PNG
+    timeout_seconds: 5
+    on_success: open_timed
+    on_failure: done
+
+  open_timed:
+    action: CLICK_IMAGE
+    target: timeRewards.PNG
+    settle_seconds: 1
+    on_success: claim_dot
+
+  claim_dot:
+    action: CLICK_IMAGE
+    target: playTimeRewardsRedDot.png
+    settle_seconds: 1
+    on_success: claim_dot
+    on_failure: claim_red
+
+  claim_red:
+    action: CLICK_IMAGE
+    target: redNotificationDot.png
+    settle_seconds: 1
+    on_success: claim_red
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

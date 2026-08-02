@@ -1,0 +1,313 @@
+# configs/doom_tower_v2.yaml
+name: "Doom Tower - gold-key waves then silver-key multi on bosses"
+start_node: close_popup_ads
+
+# Difficulty switching uses cropped templates when available; the dropdown
+# itself has no stable crop yet so CLICK_POINT is the fallback (window-ish
+# desktop coords from v1 — see Coordinate_Strategy.md). Wave battles loop
+# until no next-stage or no keys. Silver-key multi tries the right-side boss.
+
+nodes:
+  close_popup_ads:
+    action: CLICK_IMAGE
+    target: exitAdd.png
+    settle_seconds: 3
+    on_success: open_battle_menu
+    on_failure: open_battle_menu
+
+  open_battle_menu:
+    action: CLICK_IMAGE
+    target: battleBTN.png
+    settle_seconds: 1
+    on_success: swipe_to_dt
+
+  swipe_to_dt:
+    action: SWIPE
+    target: left
+    settle_seconds: 1
+    on_success: open_doom_tower
+
+  open_doom_tower:
+    action: CLICK_IMAGE
+    target: doomTower.png
+    settle_seconds: 2
+    on_success: ensure_dt_screen
+
+  ensure_dt_screen:
+    action: WAIT_FOR_IMAGE
+    target: doomTowerScreen.png
+    timeout_seconds: 10
+    on_success: open_difficulty_menu
+
+  open_difficulty_menu:
+    action: CLICK_POINT
+    target: difficulty_dropdown
+    x: 600
+    y: 750
+    settle_seconds: 1
+    note: "No cropped dropdown template yet — CLICK_POINT fallback."
+    on_success: pick_hard
+
+  pick_hard:
+    action: CLICK_POINT
+    target: hard_option
+    x: 600
+    y: 710
+    settle_seconds: 3
+    on_success: check_complete_hard
+
+  check_complete_hard:
+    action: IMAGE_PRESENT
+    target: doomTowerNextStage.png
+    note: "Next stage visible means Hard is not finished."
+    on_success: fight_wave
+    on_failure: check_locked_hard
+
+  check_locked_hard:
+    action: IMAGE_PRESENT
+    target: doomTowerLockedStage.png
+    on_success: switch_to_normal
+    on_failure: check_wave119_hard
+
+  check_wave119_hard:
+    action: IMAGE_PRESENT
+    target: wave119Complete.png
+    on_success: switch_to_normal
+    on_failure: fight_wave
+
+  fight_wave:
+    action: CLICK_IMAGE
+    target: doomTowerNextStage.png
+    settle_seconds: 1
+    on_success: start_wave
+    on_failure: try_boss
+
+  start_wave:
+    action: CLICK_IMAGE
+    target: doomTowerStartBattle.png
+    settle_seconds: 2
+    on_success: await_wave_indicator
+    on_failure: switch_to_normal
+
+  await_wave_indicator:
+    action: WAIT_FOR_IMAGE
+    target: turnOffMultiBattle.png
+    timeout_seconds: 30
+    on_success: await_wave_done
+    on_failure: return_after_wave
+
+  await_wave_done:
+    action: WAIT_UNTIL_DISAPPEARS
+    target: turnOffMultiBattle.png
+    timeout_seconds: 600
+    check_interval_seconds: 5
+    on_success: return_after_wave
+    on_failure: return_after_wave
+
+  return_after_wave:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: ensure_after_wave
+
+  ensure_after_wave:
+    action: IMAGE_PRESENT
+    target: doomTowerScreen.png
+    on_success: fight_wave
+    on_failure: return_after_wave
+
+  try_boss:
+    action: CLICK_POINT
+    target: boss_right
+    x: 1260
+    y: 530
+    settle_seconds: 1
+    on_success: try_boss_center
+
+  try_boss_center:
+    action: CLICK_POINT
+    target: boss_center
+    x: 950
+    y: 530
+    settle_seconds: 1
+    on_success: start_boss
+
+  start_boss:
+    action: CLICK_IMAGE
+    target: doomTowerStartBattle.png
+    settle_seconds: 2
+    on_success: await_boss
+    on_failure: switch_to_normal
+
+  await_boss:
+    action: WAIT_FOR_IMAGE
+    target: bastion.png
+    timeout_seconds: 300
+    check_interval_seconds: 5
+    note: "v1 wait_for_battle_completion watches for bastion."
+    on_success: return_after_boss
+    on_failure: return_after_boss
+
+  return_after_boss:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: ensure_after_boss
+
+  ensure_after_boss:
+    action: IMAGE_PRESENT
+    target: doomTowerScreen.png
+    on_success: fight_wave
+    on_failure: return_after_boss
+
+  switch_to_normal:
+    action: CLICK_POINT
+    target: difficulty_dropdown
+    x: 600
+    y: 750
+    settle_seconds: 1
+    on_success: pick_normal
+
+  pick_normal:
+    action: CLICK_POINT
+    target: normal_option
+    x: 600
+    y: 650
+    settle_seconds: 3
+    on_success: check_complete_normal
+
+  check_complete_normal:
+    action: IMAGE_PRESENT
+    target: doomTowerNextStage.png
+    on_success: fight_wave_normal
+    on_failure: silver_keys
+
+  fight_wave_normal:
+    action: CLICK_IMAGE
+    target: doomTowerNextStage.png
+    settle_seconds: 1
+    on_success: start_wave_normal
+    on_failure: silver_keys
+
+  start_wave_normal:
+    action: CLICK_IMAGE
+    target: doomTowerStartBattle.png
+    settle_seconds: 2
+    on_success: await_wave_indicator_n
+    on_failure: silver_keys
+
+  await_wave_indicator_n:
+    action: WAIT_FOR_IMAGE
+    target: turnOffMultiBattle.png
+    timeout_seconds: 30
+    on_success: await_wave_done_n
+    on_failure: return_wave_n
+
+  await_wave_done_n:
+    action: WAIT_UNTIL_DISAPPEARS
+    target: turnOffMultiBattle.png
+    timeout_seconds: 600
+    check_interval_seconds: 5
+    on_success: return_wave_n
+    on_failure: return_wave_n
+
+  return_wave_n:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: ensure_wave_n
+
+  ensure_wave_n:
+    action: IMAGE_PRESENT
+    target: doomTowerScreen.png
+    on_success: fight_wave_normal
+    on_failure: return_wave_n
+
+  silver_keys:
+    action: CLICK_POINT
+    target: difficulty_dropdown
+    x: 600
+    y: 750
+    settle_seconds: 1
+    note: "Switch back to Hard for silver-key multi on completed bosses."
+    on_success: silver_pick_hard
+
+  silver_pick_hard:
+    action: CLICK_POINT
+    target: hard_option
+    x: 600
+    y: 710
+    settle_seconds: 2
+    on_success: silver_boss_right
+
+  silver_boss_right:
+    action: CLICK_POINT
+    target: boss_right
+    x: 1260
+    y: 530
+    settle_seconds: 1
+    on_success: silver_multi
+
+  silver_multi:
+    action: CLICK_IMAGE
+    target: multiBattleButton.png
+    settle_seconds: 1
+    on_success: silver_start
+    on_failure: silver_boss_center
+
+  silver_start:
+    action: CLICK_IMAGE
+    target: startMultiBattle.png
+    settle_seconds: 5
+    on_success: silver_await
+
+  silver_await:
+    action: WAIT_FOR_IMAGE
+    target: turnOffMultiBattle.png
+    timeout_seconds: 30
+    on_success: silver_await_done
+    on_failure: null
+
+  silver_await_done:
+    action: WAIT_UNTIL_DISAPPEARS
+    target: turnOffMultiBattle.png
+    timeout_seconds: 600
+    check_interval_seconds: 5
+    on_success: null
+    on_failure: null
+
+  silver_boss_center:
+    action: CLICK_POINT
+    target: boss_center
+    x: 950
+    y: 530
+    settle_seconds: 1
+    on_success: silver_multi_2
+
+  silver_multi_2:
+    action: CLICK_IMAGE
+    target: multiBattleButton.png
+    settle_seconds: 1
+    on_success: silver_start_2
+    on_failure: null
+
+  silver_start_2:
+    action: CLICK_IMAGE
+    target: startMultiBattle.png
+    settle_seconds: 5
+    on_success: silver_await_2
+
+  silver_await_2:
+    action: WAIT_FOR_IMAGE
+    target: turnOffMultiBattle.png
+    timeout_seconds: 30
+    on_success: silver_await_done_2
+    on_failure: null
+
+  silver_await_done_2:
+    action: WAIT_UNTIL_DISAPPEARS
+    target: turnOffMultiBattle.png
+    timeout_seconds: 600
+    check_interval_seconds: 5
+    on_success: null
+    on_failure: null

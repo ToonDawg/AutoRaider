@@ -1,0 +1,202 @@
+# configs/faction_wars_v2.yaml
+name: "Faction Wars - multi-battle each visible faction until exhausted"
+start_node: close_popup_ads
+
+# Navigate, swipe to reveal banners, click each with a +50/+50 offset, start
+# the bottom-most stage, multi-battle, wait for completion, ESC back, repeat
+# until no banner remains. Then the other swipe direction. Until-exhausted.
+
+nodes:
+  close_popup_ads:
+    action: CLICK_IMAGE
+    target: exitAdd.png
+    settle_seconds: 3
+    on_success: open_battle_menu
+    on_failure: open_battle_menu
+
+  open_battle_menu:
+    action: CLICK_IMAGE
+    target: battleBTN.png
+    settle_seconds: 1
+    on_success: open_faction_wars
+
+  open_faction_wars:
+    action: CLICK_IMAGE
+    target: factionWars.png
+    settle_seconds: 2
+    on_success: swipe_reveal_right
+
+  swipe_reveal_right:
+    action: SWIPE
+    target: left
+    distance: 550
+    duration: 1.0
+    settle_seconds: 1
+    note: "v1 swipe_left(550) to reveal right-side factions."
+    on_success: click_banner
+
+  click_banner:
+    action: CLICK_IMAGE
+    target: FactionWarBanner.png
+    offset: [50, 50]
+    settle_seconds: 1
+    note: "Offset matches v1 click((x+50, y+50)). Cycle until none left."
+    on_success: start_bottom_stage
+    on_failure: swipe_reveal_left
+
+  start_bottom_stage:
+    action: CLICK_IMAGE
+    target: stageStart.png
+    match: bottom
+    settle_seconds: 1
+    on_success: check_stage_still_visible
+    on_failure: open_multi
+
+  check_stage_still_visible:
+    action: IMAGE_PRESENT
+    target: stageStart.png
+    on_success: dismiss_stage
+    on_failure: open_multi
+
+  dismiss_stage:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: open_multi
+
+  open_multi:
+    action: CLICK_IMAGE
+    target: multiBattleButton.png
+    settle_seconds: 1
+    on_success: confirm_multi
+    on_failure: return_after_faction
+
+  confirm_multi:
+    action: CLICK_IMAGE
+    target: startMultiBattle.png
+    settle_seconds: 5
+    on_success: await_multi_indicator
+
+  await_multi_indicator:
+    action: WAIT_FOR_IMAGE
+    target: turnOffMultiBattle.png
+    timeout_seconds: 30
+    on_success: await_multi_done
+    on_failure: await_complete_screen
+
+  await_multi_done:
+    action: WAIT_UNTIL_DISAPPEARS
+    target: turnOffMultiBattle.png
+    timeout_seconds: 600
+    check_interval_seconds: 5
+    on_success: await_complete_screen
+    on_failure: await_complete_screen
+
+  await_complete_screen:
+    action: WAIT_FOR_IMAGE
+    target: multiBattleComplete.png
+    timeout_seconds: 120
+    on_success: return_after_faction
+
+  return_after_faction:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    note: "ESC until back on the FW screen, then fight the next banner."
+    on_success: ensure_fw_screen
+
+  ensure_fw_screen:
+    action: IMAGE_PRESENT
+    target: factionWarsScreen.png
+    on_success: click_banner
+    on_failure: return_after_faction
+
+  swipe_reveal_left:
+    action: SWIPE
+    target: right
+    distance: 1400
+    duration: 1.0
+    settle_seconds: 1
+    note: "v1 swipe_right(1400) to reveal left-side factions."
+    on_success: click_banner_left
+
+  click_banner_left:
+    action: CLICK_IMAGE
+    target: FactionWarBanner.png
+    offset: [50, 50]
+    settle_seconds: 1
+    on_success: start_bottom_stage_left
+    on_failure: done
+
+  start_bottom_stage_left:
+    action: CLICK_IMAGE
+    target: stageStart.png
+    match: bottom
+    settle_seconds: 1
+    on_success: check_stage_left
+    on_failure: open_multi_left
+
+  check_stage_left:
+    action: IMAGE_PRESENT
+    target: stageStart.png
+    on_success: dismiss_stage_left
+    on_failure: open_multi_left
+
+  dismiss_stage_left:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: open_multi_left
+
+  open_multi_left:
+    action: CLICK_IMAGE
+    target: multiBattleButton.png
+    settle_seconds: 1
+    on_success: confirm_multi_left
+    on_failure: return_left
+
+  confirm_multi_left:
+    action: CLICK_IMAGE
+    target: startMultiBattle.png
+    settle_seconds: 5
+    on_success: await_multi_indicator_left
+
+  await_multi_indicator_left:
+    action: WAIT_FOR_IMAGE
+    target: turnOffMultiBattle.png
+    timeout_seconds: 30
+    on_success: await_multi_done_left
+    on_failure: await_complete_left
+
+  await_multi_done_left:
+    action: WAIT_UNTIL_DISAPPEARS
+    target: turnOffMultiBattle.png
+    timeout_seconds: 600
+    check_interval_seconds: 5
+    on_success: await_complete_left
+    on_failure: await_complete_left
+
+  await_complete_left:
+    action: WAIT_FOR_IMAGE
+    target: multiBattleComplete.png
+    timeout_seconds: 120
+    on_success: return_left
+
+  return_left:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: ensure_fw_left
+
+  ensure_fw_left:
+    action: IMAGE_PRESENT
+    target: factionWarsScreen.png
+    on_success: click_banner_left
+    on_failure: return_left
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    note: "No banners left in either direction."
+    on_success: null

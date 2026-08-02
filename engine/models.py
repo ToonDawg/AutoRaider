@@ -11,11 +11,29 @@ from pydantic import BaseModel, ConfigDict, model_validator
 class Action(StrEnum):
     CLICK_IMAGE = "CLICK_IMAGE"
     WAIT_FOR_IMAGE = "WAIT_FOR_IMAGE"
+    WAIT_UNTIL_DISAPPEARS = "WAIT_UNTIL_DISAPPEARS"
     IMAGE_PRESENT = "IMAGE_PRESENT"
     PRESS_KEY = "PRESS_KEY"
+    SWIPE = "SWIPE"
+    CLICK_POINT = "CLICK_POINT"
 
 
-_IMAGE_ACTIONS = {Action.CLICK_IMAGE, Action.WAIT_FOR_IMAGE, Action.IMAGE_PRESENT}
+class MatchPolicy(StrEnum):
+    """Which locateAll hit CLICK_IMAGE should use when several match."""
+
+    BEST = "best"  # first / highest-confidence (locateOnScreen behaviour)
+    BOTTOM = "bottom"  # largest y — Stage 15, bottom-most stage start
+    TOP = "top"  # smallest y
+
+
+_IMAGE_ACTIONS = {
+    Action.CLICK_IMAGE,
+    Action.WAIT_FOR_IMAGE,
+    Action.WAIT_UNTIL_DISAPPEARS,
+    Action.IMAGE_PRESENT,
+}
+
+_SWIPE_DIRECTIONS = frozenset({"up", "down", "left", "right"})
 
 
 class ActionNode(BaseModel):
@@ -30,6 +48,33 @@ class ActionNode(BaseModel):
     note: str | None = None
     on_success: str | None = None
     on_failure: str | None = None
+
+    # CLICK_IMAGE multi-match selection
+    match: MatchPolicy = MatchPolicy.BEST
+    offset: tuple[int, int] = (0, 0)
+
+    # SWIPE extras (target is the direction)
+    distance: int = 400
+    duration: float = 0.5
+    origin_x: int | None = None
+    origin_y: int | None = None
+
+    # CLICK_POINT — target is unused; coordinates are window-relative when a
+    # region is set, otherwise absolute desktop pixels (same as v1).
+    x: int | None = None
+    y: int | None = None
+
+    @model_validator(mode="after")
+    def _action_specific_fields(self) -> ActionNode:
+        if self.action is Action.SWIPE and self.target not in _SWIPE_DIRECTIONS:
+            raise ValueError(
+                f"SWIPE target must be one of {sorted(_SWIPE_DIRECTIONS)}, "
+                f"got {self.target!r}"
+            )
+        if self.action is Action.CLICK_POINT:
+            if self.x is None or self.y is None:
+                raise ValueError("CLICK_POINT requires x and y")
+        return self
 
 
 class SequenceConfig(BaseModel):

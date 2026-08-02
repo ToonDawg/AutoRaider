@@ -1,0 +1,49 @@
+# configs/rewards/guardian_ring_v2.yaml
+name: "Rewards - guardian ring upgrades until exhausted"
+start_node: find_ring
+
+nodes:
+  find_ring:
+    action: IMAGE_PRESENT
+    target: guardianRing.png
+    on_success: open_ring
+    on_failure: swipe_find
+
+  swipe_find:
+    action: SWIPE
+    target: left
+    settle_seconds: 0
+    on_success: swipe_up_find
+
+  swipe_up_find:
+    action: SWIPE
+    target: up
+    settle_seconds: 1
+    on_success: wait_ring
+
+  wait_ring:
+    action: WAIT_FOR_IMAGE
+    target: guardianRing.png
+    timeout_seconds: 5
+    on_success: open_ring
+    on_failure: done
+
+  open_ring:
+    action: CLICK_IMAGE
+    target: guardianRing.png
+    settle_seconds: 2
+    on_success: upgrade
+
+  upgrade:
+    action: CLICK_IMAGE
+    target: GRupgrade.png
+    settle_seconds: 1
+    note: "Loop until the upgrade button is gone."
+    on_success: upgrade
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

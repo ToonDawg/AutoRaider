@@ -108,8 +108,51 @@ def test_bind_constructs_from_the_three_arguments_the_factory_passes():
 
     assert isinstance(command, SequenceCommand)
     assert command.config_path == ARENA_V2_CONFIG
+    assert command.config_paths == [ARENA_V2_CONFIG]
     assert command.repeat == 5
     assert command.click_handler is handler
+    assert command.stop_on_failure is True
+
+
+def test_bind_list_runs_each_config_best_effort(tmp_path: Path):
+    """Rewards / Daily Quests pass a list; one failed subflow must not abort
+    the rest.
+    """
+    good = tmp_path / "good.yaml"
+    good.write_text(MINI_SEQUENCE, encoding="utf-8")
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(
+        "name: bad\nstart_node: only\nnodes:\n"
+        "  only:\n    action: CLICK_IMAGE\n    target: missing.png\n",
+        encoding="utf-8",
+    )
+    also_good = tmp_path / "also_good.yaml"
+    also_good.write_text(MINI_SEQUENCE, encoding="utf-8")
+
+    handler = FakeClickHandler(
+        {
+            "battleBTN.png": [True, True],
+            "arenaBattle.png": [True, True],
+            "missing.png": [False],
+        }
+    )
+    command = SequenceCommand(
+        None,
+        _logger(),
+        handler,
+        [good, bad, also_good],
+        grab_screen=_image,
+        dumps_dir=tmp_path / "dumps",
+        stop_on_failure=False,
+    )
+    command.execute()
+
+    # good + also_good each clean up; bad dumps and cleans up too
+    assert _methods(handler).count("back_to_bastion") == 3
+    assert _dumps(tmp_path) == [".json", ".png"]
+    clicks = [c.args[0] for c in handler.calls if c.method == "click_image"]
+    assert clicks.count("battleBTN.png") == 2
+    assert "missing.png" in clicks
 
 
 def test_the_bound_arena_config_exists_and_validates():

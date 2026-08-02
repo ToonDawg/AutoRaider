@@ -1,0 +1,112 @@
+# configs/tag_team_arena_v2.yaml
+name: "Tag Team Arena - battles until tokens run out"
+start_node: close_popup_ads
+
+# Same shape as arena_v2: navigate, fight, loop until the refill-gem guard.
+# Forces SWIPE (scroll the opponent list). Until-exhausted — no 5-battle cap.
+
+nodes:
+  close_popup_ads:
+    action: CLICK_IMAGE
+    target: exitAdd.png
+    settle_seconds: 3
+    on_success: open_battle_menu
+    on_failure: open_battle_menu
+
+  open_battle_menu:
+    action: CLICK_IMAGE
+    target: battleBTN.png
+    settle_seconds: 1
+    on_success: open_arena_tab
+
+  open_arena_tab:
+    action: CLICK_IMAGE
+    target: arenaTab.png
+    settle_seconds: 1
+    on_success: enter_tag_team
+
+  enter_tag_team:
+    action: CLICK_IMAGE
+    target: TagTeamArena.png
+    settle_seconds: 2
+    on_success: select_opponent
+
+  select_opponent:
+    action: CLICK_IMAGE
+    target: tagArenaBattle.png
+    settle_seconds: 2
+    note: "Re-entry point. If no battle button, scroll then try again."
+    on_success: check_confirm
+    on_failure: scroll_for_opponent
+
+  scroll_for_opponent:
+    action: SWIPE
+    target: up
+    distance: 200
+    settle_seconds: 1
+    note: "v1 scrolled 0 / 200 / 200 looking for a fight button."
+    on_success: select_opponent_after_scroll
+
+  select_opponent_after_scroll:
+    action: CLICK_IMAGE
+    target: tagArenaBattle.png
+    settle_seconds: 2
+    on_success: check_confirm
+
+  check_confirm:
+    action: IMAGE_PRESENT
+    target: arenaConfirm.png
+    note: "Token confirmation dialog — click through if present."
+    on_success: confirm_tokens
+    on_failure: check_out_of_tokens
+
+  confirm_tokens:
+    action: CLICK_IMAGE
+    target: arenaConfirm.png
+    settle_seconds: 2
+    on_success: reselect_after_confirm
+    on_failure: check_out_of_tokens
+
+  reselect_after_confirm:
+    action: CLICK_IMAGE
+    target: tagArenaBattle.png
+    settle_seconds: 1
+    on_success: check_out_of_tokens
+
+  check_out_of_tokens:
+    action: IMAGE_PRESENT
+    target: ArenaRefillGems.png
+    note: "Gem refill prompt — legitimate stop, same as classic arena."
+    on_success: leave_refill_prompt
+    on_failure: start_battle
+
+  leave_refill_prompt:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: null
+
+  start_battle:
+    action: CLICK_IMAGE
+    target: tagArenaStart.png
+    settle_seconds: 1
+    on_success: await_battle_end
+
+  await_battle_end:
+    action: WAIT_FOR_IMAGE
+    target: tapToContinue.png
+    timeout_seconds: 120
+    check_interval_seconds: 2
+    on_success: dismiss_results
+
+  dismiss_results:
+    action: CLICK_IMAGE
+    target: tapToContinue.png
+    settle_seconds: 1
+    on_success: return_to_list
+
+  return_to_list:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 2
+    on_success: select_opponent

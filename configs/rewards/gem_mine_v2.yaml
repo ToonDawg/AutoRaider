@@ -1,0 +1,40 @@
+# configs/rewards/gem_mine_v2.yaml
+name: "Rewards - gem mine collect"
+start_node: swipe_up
+
+# No gemMine.png crop yet — CLICK_POINT fallback. See Coordinate_Strategy.md.
+
+nodes:
+  swipe_up:
+    action: SWIPE
+    target: up
+    settle_seconds: 0
+    on_success: swipe_right
+
+  swipe_right:
+    action: SWIPE
+    target: right
+    settle_seconds: 1
+    on_success: click_mine
+
+  click_mine:
+    action: CLICK_POINT
+    target: gem_mine
+    x: 800
+    y: 560
+    settle_seconds: 1
+    on_success: click_mine_again
+
+  click_mine_again:
+    action: CLICK_POINT
+    target: gem_mine
+    x: 800
+    y: 560
+    settle_seconds: 1
+    on_success: leave
+
+  leave:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: null

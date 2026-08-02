@@ -1,0 +1,44 @@
+# configs/rewards/quest_claims_v2.yaml
+name: "Rewards - claim daily and advanced quests"
+start_node: wait_quests
+
+nodes:
+  wait_quests:
+    action: WAIT_FOR_IMAGE
+    target: quests.png
+    timeout_seconds: 10
+    on_success: open_quests
+    on_failure: done
+
+  open_quests:
+    action: CLICK_IMAGE
+    target: quests.png
+    settle_seconds: 2
+    on_success: claim_daily
+
+  claim_daily:
+    action: CLICK_IMAGE
+    target: questClaim.png
+    settle_seconds: 1
+    on_success: claim_daily
+    on_failure: open_advanced
+
+  open_advanced:
+    action: CLICK_IMAGE
+    target: advancedQuests.png
+    settle_seconds: 1
+    on_success: claim_advanced
+    on_failure: done
+
+  claim_advanced:
+    action: CLICK_IMAGE
+    target: questClaim.png
+    settle_seconds: 1
+    on_success: claim_advanced
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

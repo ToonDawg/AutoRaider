@@ -174,7 +174,9 @@ Same display-scaling trap as the [screenshot captures](./Screenshots_Required.md
 
 ## Known risk, not fixed here
 
-**Status: flagged, not fixed, still open.** Confirmed present at `utils/click_handler.py:347` and deliberately left alone. Needs its own ticket from the epic owner.
+**Status: flagged, not fixed, now tracked in [Ticket 5](./Ticket_5_BackToBastion_Cap.md).** Confirmed present at `utils/click_handler.py:347` and deliberately left alone here.
+
+Writing that ticket turned up something this section understated: **F2 cannot interrupt the loop at all.** `press_key` and `_locate_image` never check `cancel_flag`, and `back_to_bastion()` catches bare `Exception`, which would swallow a `CancellationException` even if one were raised. Since `SequenceCommand._cleanup_after_task` calls it from a `finally`, every v2 failure ends in a loop that neither stops itself nor answers the cancel key. Detail in Ticket 5.
 
 `ClickHandler.back_to_bastion()` is an unbounded `while True` ESC loop with no attempt cap. If the game is in a state where the quit prompt never appears, it hangs forever, and it swallows its own exceptions so nothing surfaces.
 

@@ -16,10 +16,23 @@
 | 07 | `07_loading_screen.png` | Delivered (900×600) | `loadingScreen.png` does **not** match this frame — crop may be stale or capture mistimed |
 | 08 | `08_mid_battle.png` | Delivered (900×600) | `inBattle.png` does **not** match; `tapToContinue.png` *does* match (capture may be late-battle/results) |
 | 09 | `09_battle_results.png` | Delivered (900×600) | `tapToContinue.png` matches |
-| 10 | `10_out_of_tokens.png` | **Outstanding** | Completes PR 1.4 gem-refill guard coverage — high priority |
+| 10 | `10_out_of_tokens.png` | **Outstanding — now blocking** | `ArenaRefillGems.png` became the Arena sequence's only clean exit when the config started looping, so every run ends on an unverified crop. See [why this changed](#why-capture-10-went-from-high-priority-to-blocking) |
 | 11 | (any lost screen) | **Outstanding** | No longer blocks Phase 3 — it is a realism check on the finished tool. Easiest route is now a crash dump — see below |
 
-Phase 1 offline work shipped against 01 and 03–09. `tests/test_assets_match.py` skips `exitAdd.png` and `ArenaRefillGems.png` by name until 02 and 10 arrive. Replay of 01→09 reaches `COMPLETED`.
+Phase 1 offline work shipped against 01 and 03–09. `tests/test_assets_match.py` skips `exitAdd.png` and `ArenaRefillGems.png` by name until 02 and 10 arrive.
+
+### Why capture 10 went from high priority to blocking
+
+`configs/arena_v2.yaml` used to run one battle and stop. It now fights until Arena tokens run out, implemented as a cycle in the graph: `return_to_opponent_list` feeds back into `select_opponent`, and `check_out_of_tokens` is the only clean way out.
+
+So `ArenaRefillGems.png` went from a guard that almost never ran — you would have had to start a run with zero tokens — to the exit condition that **every single run** depends on. It has never been matched against a real screen. If the crop is stale, the guard returns false and the sequence clicks `arenaStart.png` at a refill modal; the likely result is a clean abort, and the bad result is a match on the modal's confirm button, which spends real gems.
+
+Two consequences for this document:
+
+- **Capture 10 is the most valuable file on this list**, ahead of 02 and 11.
+- **The [supervised loop run](./Windows_Live_Runbook.md#6-supervised-loop-run-until-tokens-run-out) delivers it either way** — as a screenshot if the guard fires, or as a crash dump of the out-of-tokens screen if it does not. The dump is the better artefact, because it is captured at exactly the geometry the matcher searched.
+
+Replay of 01→09 no longer reaches `COMPLETED`, and that is expected rather than a regression: a clean exit needs an out-of-tokens frame, which this corpus does not have. `tests/test_replay.py` now proves each template against its real frame across two turns of the loop and stops at the corpus-exhaustion abort. Capture 10 is what would let it assert `COMPLETED` again.
 
 The repository previously had **zero** full-screen game captures. `assets/` still holds ~170 small template crops — enough to feed the matcher. The eight delivered window crops are what let us test it.
 
@@ -81,7 +94,7 @@ Ten captures, one per screen the Arena sequence touches. Each corresponds to a n
 Notes:
 
 - **02** is opportunistic — capture it whenever an ad appears. If ads have stopped appearing, say so and the developer will skip that assertion.
-- **10** only shows up when Arena tokens are actually exhausted, so grab it at the end of a session. It is worth the wait: it is the guard that stops the bot spending real gems, and it is the one node we most want tested.
+- **10** only shows up when Arena tokens are actually exhausted, so grab it at the end of a session — or let the [supervised loop run](./Windows_Live_Runbook.md#6-supervised-loop-run-until-tokens-run-out) drive you into it, which is now the easiest route. It is the guard that stops the bot spending real gems, and since the sequence started looping it is also the only thing that ends a run.
 - **07** and **08** are not used by the Phase 1 config but cost nothing while you are there, and the next sequence will want them. Current 07/08 deliveries do not match `loadingScreen.png` / `inBattle.png` — re-capture or refresh those crops when convenient.
 
 ## Failure case — wanted for Phase 3, no longer blocking it

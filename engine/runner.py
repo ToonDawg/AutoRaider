@@ -82,10 +82,20 @@ class SequenceRunner:
                 description=note,
                 retries=node.retries,
                 delay=node.settle_seconds,
+                match=node.match.value,
+                offset=node.offset,
             )
 
         if node.action is Action.WAIT_FOR_IMAGE:
             return self.screen.wait_for_image(
+                node.target,
+                description=note,
+                timeout=node.timeout_seconds,
+                check_interval=node.check_interval_seconds,
+            )
+
+        if node.action is Action.WAIT_UNTIL_DISAPPEARS:
+            return self.screen.wait_until_disappears(
                 node.target,
                 description=note,
                 timeout=node.timeout_seconds,
@@ -97,6 +107,24 @@ class SequenceRunner:
 
         if node.action is Action.PRESS_KEY:
             self.screen.press_key(node.target, description=note)
+            self._sleep(node.settle_seconds)
+            return True
+
+        if node.action is Action.SWIPE:
+            self.screen.swipe(
+                node.target,
+                description=note,
+                distance=node.distance,
+                duration=node.duration,
+                origin_x=node.origin_x,
+                origin_y=node.origin_y,
+            )
+            self._sleep(node.settle_seconds)
+            return True
+
+        if node.action is Action.CLICK_POINT:
+            assert node.x is not None and node.y is not None  # validated
+            self.screen.click_point(node.x, node.y, description=note)
             self._sleep(node.settle_seconds)
             return True
 

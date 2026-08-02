@@ -15,9 +15,16 @@ class CommandKeys(Enum):
     DOOM_TOWER = "doom_tower"
     DAILY_QUESTS = "daily_quests"
     TAG_TEAM_ARENA = "tag_team_arena"
-    # v2 engine, registered alongside DAILY_TEN_CLASSIC_ARENA rather than
-    # replacing it. Off by default in every preset; run manually and watched.
+    # v2 engine keys — registered alongside v1 rather than replacing them.
+    # Off by default in every preset; run manually from the V2 Engine tab.
     CLASSIC_ARENA_V2 = "classic_arena_v2"
+    IRON_TWINS_V2 = "iron_twins_v2"
+    TAG_TEAM_ARENA_V2 = "tag_team_arena_v2"
+    FACTION_WARS_V2 = "faction_wars_v2"
+    CLANBOSS_V2 = "clanboss_v2"
+    DOOM_TOWER_V2 = "doom_tower_v2"
+    REWARDS_V2 = "rewards_v2"
+    DAILY_QUESTS_V2 = "daily_quests_v2"
     
     @staticmethod
     def from_string(value: str):

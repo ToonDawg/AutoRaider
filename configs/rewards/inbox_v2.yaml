@@ -1,0 +1,59 @@
+# configs/rewards/inbox_v2.yaml
+name: "Rewards - inbox collect"
+start_node: open_inbox
+
+# Collect button sits 250px right of each item icon — offset, not CLICK_POINT.
+
+nodes:
+  open_inbox:
+    action: PRESS_KEY
+    target: i
+    settle_seconds: 1
+    on_success: collect_brew
+
+  collect_brew:
+    action: CLICK_IMAGE
+    target: inbox_brew.png
+    offset: [250, 0]
+    settle_seconds: 2
+    on_success: collect_brew
+    on_failure: collect_purple
+
+  collect_purple:
+    action: CLICK_IMAGE
+    target: inbox_purple_forge.png
+    offset: [250, 0]
+    settle_seconds: 2
+    on_success: collect_purple
+    on_failure: collect_yellow
+
+  collect_yellow:
+    action: CLICK_IMAGE
+    target: inbox_yellow_forge.png
+    offset: [250, 0]
+    settle_seconds: 2
+    on_success: collect_yellow
+    on_failure: collect_coin
+
+  collect_coin:
+    action: CLICK_IMAGE
+    target: inbox_coin.png
+    offset: [250, 0]
+    settle_seconds: 2
+    on_success: collect_coin
+    on_failure: collect_potion
+
+  collect_potion:
+    action: CLICK_IMAGE
+    target: inbox_potion.png
+    offset: [250, 0]
+    settle_seconds: 2
+    on_success: collect_potion
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    note: "Nothing left to collect — legitimate stop."
+    on_success: null

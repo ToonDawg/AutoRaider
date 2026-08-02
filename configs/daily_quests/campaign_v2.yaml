@@ -1,0 +1,46 @@
+# configs/daily_quests/campaign_v2.yaml
+name: "Daily Quests - campaign boss replays until exhausted"
+start_node: open_battle
+
+# Until-exhausted: replay until the button stops appearing. Burns energy —
+# accepted under the counter decision. Artifact upgrade is deliberately
+# absent (random box click has no declarative form).
+
+nodes:
+  open_battle:
+    action: CLICK_IMAGE
+    target: battleBTN.png
+    settle_seconds: 2
+    on_success: open_campaign
+
+  open_campaign:
+    action: CLICK_IMAGE
+    target: campaignButtonJump.png
+    settle_seconds: 2
+    on_success: start_campaign
+
+  start_campaign:
+    action: CLICK_IMAGE
+    target: campaignStart.png
+    settle_seconds: 2
+    on_success: await_replay
+
+  await_replay:
+    action: WAIT_FOR_IMAGE
+    target: replayCampaign.png
+    timeout_seconds: 120
+    on_success: click_replay
+
+  click_replay:
+    action: CLICK_IMAGE
+    target: replayCampaign.png
+    settle_seconds: 2
+    note: "Loop until energy/keys are gone and replay disappears."
+    on_success: await_replay
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

@@ -62,7 +62,7 @@ These were found by reading the current code. Each one is resolved in the ticket
 | 4 | Example assets don't exist | There is no `arena_battle_button.png` or `loading_screen.png`. The real files are `arenaBattle.png` and `loadingScreen.png` (case matters). | Ticket 1 |
 | 5 | Action set can't express Arena | Arena needs `PRESS_KEY` (it escapes out of screens constantly) and a non-clicking presence check (the gem-refill guard). Conversely it never needs `WAIT_UNTIL_DISAPPEARS` — battle completion is detected by `tapToContinue.png` *appearing*. | Ticket 1 |
 | 6 | `on_failure: "bastion_fallback"` | No such node is defined in the example and no action type could implement it. | Ticket 1 — a null edge terminates the run; the caller does cleanup |
-| 7 | "No counters" vs "complete Arena battle loop" | Classic Arena fights up to 100 teams by counting. A YAML with no counters **cannot** express "fight exactly 10". | Ticket 1 — MVP is **one** battle. Repeat-until-exhausted comes free from a graph cycle; exact counts are deferred |
+| 7 | "No counters" vs "complete Arena battle loop" | Classic Arena fights up to 100 teams by counting. A YAML with no counters **cannot** express "fight exactly 10". | Ticket 1 — MVP is **one** battle. Repeat-until-exhausted comes free from a graph cycle; exact counts are deferred. **Settled 2026-08-01:** the owner chose until-exhausted, and the graph cycle was indeed all it took — one edge, no schema change |
 | 8 | `CancellationException` | Raised by `ClickHandler` when the GUI sets `cancel_flag`. If the runner catches it as a normal failure, the F2 cancel button silently stops working. | Ticket 1 — must propagate |
 
 ### Schema and correctness
@@ -99,31 +99,34 @@ Ship in order. Each phase must be demonstrably working before the next starts.
 
 | Phase | Ticket | Status | Needs screenshots? |
 |---|---|---|---|
-| 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | **DONE (offline)** — PRs 1.1–1.4 shipped; live smoke run still open | Optional for core; required for the asset-match check (PR 1.4) |
-| 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **DONE (offline)** — PRs 2.1–2.2 shipped; live failure run still open | No, for the implementation. A live failed run now *produces* capture 11 |
-| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | **DONE (offline)** — PRs 3.1–3.3 shipped; GUI unverified without `_tkinter` | Captures 01, 03–09 were enough. Capture 11 is a realism check |
-| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | **IN PROGRESS** — PR 4.1 shipped (offline); 4.2 gated, 4.3 not started | Yes, per module migrated |
+| 1 | [Engine & one Arena battle](./Ticket_1_Phase1_Engine_Arena.md) | **DONE** — PRs 1.1–1.4 shipped and live-proven on the game machine | Capture 10 is now **blocking**, since the Arena config loops |
+| 2 | [Telemetry & crash dumps](./Ticket_2_Phase2_Telemetry.md) | **DONE** — PRs 2.1–2.2 shipped; live failure run passed, but its dump never reached the repo | No, for the implementation. The live failed run *produced* capture 11 — it just needs sending |
+| 3 | [HITL authoring UI](./Ticket_3_Phase3_HITL.md) | **DONE (offline)** — PRs 3.1–3.3 shipped; window driven on macOS, real-mouse drag still unchecked | Captures 01, 03–09 were enough. Capture 11 is a realism check |
+| 4 | [Migration & deprecation](./Ticket_4_Phase4_Migration.md) | **IN PROGRESS** — PR 4.1 shipped and live-proven; Arena now loops and needs run 6; 4.2 gated, 4.3 not started | Yes, per module migrated |
+| 5 | [`back_to_bastion()` attempt cap](./Ticket_5_BackToBastion_Cap.md) | **NOT STARTED** — carved out of Phase 2 so it stops being a drive-by temptation | No |
 
 Supporting documents:
 
 - [Screenshots Required](./Screenshots_Required.md) — the capture checklist for whoever has game access.
 - [Windows live-run runbook](./Windows_Live_Runbook.md) — every outstanding live proof, in the order to do them.
+- [Ticket 5](./Ticket_5_BackToBastion_Cap.md) — the `back_to_bastion()` cap, carved out of Phase 2 so it stays out of other PRs.
 
 ### Phase 1 offline checklist (shipped 2026-08-01)
 
 - [x] PR 1.1 — schema, validation, `python -m engine.validate`
 - [x] PR 1.2 — `ScreenActions` seam, runner, `FakeScreen`, ClickHandler region + `is_image_present`
 - [x] PR 1.3 — `configs/arena_v2.yaml`, `python -m engine.run`, FakeScreen graph tests
-- [x] PR 1.4 — screenshot replay harness; asset match + replay to `COMPLETED` on captures 01, 03–09
+- [x] PR 1.4 — screenshot replay harness; asset match + replay on captures 01, 03–09 (reached `COMPLETED` while a run was one battle; see [the loop finding](#finding-arena-now-loops-which-promotes-capture-10-to-blocking) for why it no longer can)
 - [x] PR 1.3 acceptance #4 — **live smoke run on Windows** (explicit follow-up; do not fake from macOS)
-- [ ] Captures 02, 10, 11 — still outstanding (10 completes gem-guard coverage; 11 is a realism check on the HITL tool, no longer a Phase 3 gate)
+- [ ] **Capture 10 — now blocking.** It was "completes gem-guard coverage" while a run was one battle. Now that the Arena config loops, `ArenaRefillGems.png` is the only clean exit and *every* run ends on it, so an unverified crop is the difference between stopping and spending gems. See [the loop finding](#finding-arena-now-loops-which-promotes-capture-10-to-blocking)
+- [ ] Captures 02 and 11 — still outstanding (11 is a realism check on the HITL tool, no longer a Phase 3 gate)
 
 ### Phase 2 offline checklist (shipped 2026-08-01)
 
 - [x] PR 2.1 — `engine/dump.py`, paired `.png` + `.json` under `logs/dumps/`, injected `grab_screen`
 - [x] PR 2.2 — `run_sequence()` extracted from `engine/run.py`; dump-before-recover asserted with a recording fake
-- [x] PR 2.2 acceptance #2 — **live failure run on Windows.** See [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups)
-- [ ] `back_to_bastion()` attempt cap — flagged for the epic owner as a separate ticket, deliberately not fixed here
+- [x] PR 2.2 acceptance #2 — **live failure run on Windows.** See [Ticket 2 → Windows follow-ups](./Ticket_2_Phase2_Telemetry.md#windows-follow-ups). **The dump it produced has not reached the repo** — `logs/` is gitignored, so it needs attaching by hand, and PR 4.2's gate has no input without it
+- [ ] `back_to_bastion()` attempt cap — now written up as [Ticket 5](./Ticket_5_BackToBastion_Cap.md); still deliberately not fixed
 
 Suite is now `43 passed, 2 skipped` on macOS with no game.
 
@@ -143,33 +146,71 @@ Suite after Phase 3: `55 passed, 2 skipped` on macOS with no game.
 ### Phase 4 checklist (PR 4.1 shipped 2026-08-01)
 
 - [x] PR 4.1 — `engine/sequence_command.py`; `classic_arena_v2` registered **beside** v1, off in every preset
-- [x] Counter question — option 1 (repeat on the caller) built and recommended; [awaiting owner sign-off](./Ticket_4_Phase4_Migration.md#recommendation-option-1-awaiting-sign-off), and nothing depends on it until 4.2
-- [x] PR 4.1 acceptance 1–3 — **live, on the game machine** ([runbook run 5](./Windows_Live_Runbook.md#5-classic_arena_v2-from-the-gui))
+- [x] Counter question — **resolved by the epic owner: option 3, "until exhausted".** Implemented as a cycle in `configs/arena_v2.yaml`, not a counter. See [the loop finding](#finding-arena-now-loops-which-promotes-capture-10-to-blocking)
+- [x] PR 4.1 acceptance 1–3 — **live, on the game machine** ([runbook run 5](./Windows_Live_Runbook.md#5-v2-engine-tab))
+- [x] Post-live cleanup — the live session's own commit regressed the suite and `config.ini`; see [what the live run brought back](#what-the-live-run-brought-back)
+- [ ] **Supervised loop run** — the Arena config now fights until tokens run out, and that has never run live ([runbook run 6](./Windows_Live_Runbook.md#6-supervised-loop-run-until-tokens-run-out))
 - [ ] PR 4.2 — **gated.** Needs the soak *and* one real failure fixed through the HITL tool with no Python edits
 - [ ] PR 4.3 — one second module, after 4.2
 
-Suite after PR 4.1: `65 passed, 2 skipped` on macOS with no game.
+Suite after the post-live cleanup: `66 passed, 2 skipped` on macOS with no game.
 
 New finding from PR 4.1: **an in-app v2 run is not window-scoped.** The app builds `ClickHandler` without a `region_provider`, so it searches the whole desktop while `python -m engine.run` searches the game window. Left alone rather than fixed, because changing it would change matching for all eight v1 commands. See [Ticket 4 → Finding](./Ticket_4_Phase4_Migration.md#finding-the-in-app-path-is-not-window-scoped).
 
-### Next task: live proof, then the PR 4.2 gate
+### What the live run brought back
 
-The blocking work is now all on the game machine, and it is sequenced in the [Windows live-run runbook](./Windows_Live_Runbook.md): the Phase 1 live smoke run is still the only thing that would prove a v2 click lands at all, and the deliberately-failed run is what produces both the Phase 2 evidence and capture 11.
+Runs 1, 2 and 5 passed on the game machine — a v2 click lands, and the YAML-driven battle runs from the app's own thread. That is the epic's central risk retired.
+
+The commit made during that session also carried four regressions back with it. All are fixed now, and they are recorded because three of them are the kind of thing that recurs:
+
+| # | What happened | Why it matters | Resolution |
+|---|---|---|---|
+| 1 | `SequenceCommand.execute` read `V2_Settings/arena_repeats` from `self.app.config_handler` | Six tests failed (`app` is `None` in tests by design), and it put a game-specific key inside the deliberately game-agnostic adapter | Reverted. The repeat count is not a config value — see the counter decision above |
+| 2 | All five task presets and `SelectionItems` were deleted from `config.ini`, while `[Schedules]` still named all five | Every one of the nine schedules resolved to a missing section and would have failed silently at its next fire | Presets restored from `6c6bf61`; all nine verified to resolve |
+| 3 | `[Tasks] classic_arena_v2 = True` | v2 became on-by-default in the only surviving task section, inverting the "cannot fire on a timer" rule | v2 keys moved to their own `[V2 Tasks]` section and out of the Tasks tab entirely |
+| 4 | A GUI settings tab for `arena_repeats` | The count is not a setting, and a v2 tab full of config is not what was wanted | Rebuilt as a v2 *task list* — checkbox per YAML command, run through the same `run_task` path |
+
+**Root cause of #2, worth its own attention.** `TasksTab.remove_selection_item` calls `delete_section(item)` and rewrites `SelectionItems`, but never touches `[Schedules]`. Removing a preset therefore orphans every schedule naming it, and the breakage only surfaces when that schedule next fires. Clicking Remove five times is what emptied the file. There is now a warning naming the affected schedule IDs, but the underlying asymmetry is a v1 GUI bug and is not fixed here.
+
+**Structural consequence of #3 and #4.** v1 tasks live on the Tasks tab, v2 tasks live on the V2 Engine tab, and the two read different config sections. Because the scheduler resolves a schedule's name to a `SelectionItems` preset, and `[V2 Tasks]` is not one, a v2 task can no longer be put on a timer by ticking a box. That is now a property of the layout rather than a convention someone has to remember.
+
+### Finding: Arena now loops, which promotes capture 10 to blocking
+
+The epic owner chose "until exhausted" over an exact count, and the guardrails already said how: *looping comes from cycles in the graph, not from a loop construct*. So `return_to_opponent_list.on_success` points back at `select_opponent`, and that is the entire change. No counter, no schema change, no new action type.
+
+This is strictly better than the counter that PR 4.1 built. [Ticket 4 noted](./Ticket_4_Phase4_Migration.md#resolved-2026-08-01-option-3-until-exhausted) that `repeat=5` cannot see *why* an attempt ended, so a caller asking for five would navigate to the Arena five times and ESC back out of the refill prompt four of them. The cycle exits the moment tokens run out, because the token guard is the exit.
+
+It also moves risk. `check_out_of_tokens` was close to decorative — with one battle per run you would only reach it by starting with zero tokens. It is now the only clean way out, so **every run ends there**, and `ArenaRefillGems.png` has never been matched against a real screen: capture 10 is undelivered and `tests/test_assets_match.py` skips that template by name. If the crop is stale, `check_out_of_tokens` returns false and `start_battle` clicks `arenaStart.png` at a refill modal. The likely outcome is no match and a clean abort with a dump; the bad outcome is a match on the modal's confirm button, which spends real gems.
+
+Two things bound that risk, and neither is a substitute for capture 10:
+
+- `SequenceRunner.max_steps` is 200, so a cycle that never finds its exit ends as `STEP_LIMIT` with a crash dump rather than fighting forever. At 6 steps per battle that ceiling is about 32 battles, comfortably above any real token count. Covered by `test_a_guard_that_never_fires_is_capped_not_infinite`.
+- The first live loop run is supervised, with few tokens and a finger on F2 ([runbook run 6](./Windows_Live_Runbook.md#6-supervised-loop-run-until-tokens-run-out)). That run either confirms the guard or produces capture 10 as a crash dump, so it is worth doing either way.
+
+One offline test got weaker and should not be quietly restored. `test_replay.py` could previously assert the config reaches `COMPLETED` against real screenshots; with a cycle it cannot, because the only clean exit needs an out-of-tokens frame the corpus does not contain. It now proves what it uniquely can — every template matching its real frame, in graph order, across two turns of the loop — and ends at the honest corpus-exhaustion abort. The clean exit is covered against `FakeScreen` in `test_arena_config.py`. Delivering capture 10 is what would let the replay assert `COMPLETED` again.
+
+### Next task: the supervised loop run, then the PR 4.2 gate
+
+Two things stand between here and PR 4.2, both on the game machine and both in the [runbook](./Windows_Live_Runbook.md):
+
+1. **[Run 6](./Windows_Live_Runbook.md#6-supervised-loop-run-until-tokens-run-out)** — the loop has never run live. Supervised, low tokens, F2 ready. Delivers capture 10 one way or the other.
+2. **The crash dump from the failed run** (runbook run 4). It was produced live but never reached the repo, because `logs/` is gitignored. PR 4.2's gate is a real failure repaired entirely through `python -m hitl`, and without that dump the gate has no input. [Run 3](./Windows_Live_Runbook.md#3-hitl-real-mouse-drag)'s real-mouse-drag check wants the same file.
 
 PR 4.2 does not start until one real failure has been diagnosed and repaired entirely through `python -m hitl`. That criterion is the epic's premise, not a checkbox — if it cannot be met, the right outcome is to stop at PR 4.1 and say so.
 
-Still deliberately not fixed: `back_to_bastion()`'s unbounded ESC loop ([Ticket 2](./Ticket_2_Phase2_Telemetry.md#known-risk-not-fixed-here)). It needs its own ticket from the epic owner and is not a drive-by for any Phase 4 PR.
+Still deliberately not fixed: `back_to_bastion()`'s unbounded ESC loop, now written up as [Ticket 5](./Ticket_5_BackToBastion_Cap.md). It is not a drive-by for any Phase 4 PR.
 
 ## Definition of done for the epic
 
-1. A single Arena battle runs start to finish from `configs/arena_v2.yaml` with no Arena-specific Python executed. *(offline proven; live Windows smoke still open)*
-2. The engine has unit tests that pass on any OS with no game installed. **Done** (`31 passed, 2 skipped` on macOS).
-3. A failed run leaves a screenshot and a JSON context file behind. **Done offline** (`engine/dump.py`); live failure run on Windows still outstanding.
-4. A human can repair a broken image target through the HITL UI without opening an editor. **Done offline** (`hitl/repair.py` tested; `hitl/app.py` written but unverified without `_tkinter`).
+1. An Arena battle runs start to finish from `configs/arena_v2.yaml` with no Arena-specific Python executed. **Done** — offline and live on the game machine. The config now fights until tokens run out rather than stopping at one battle, via a graph cycle; that loop has not yet run live ([run 6](./Windows_Live_Runbook.md#6-supervised-loop-run-until-tokens-run-out)).
+2. The engine has unit tests that pass on any OS with no game installed. **Done** (`66 passed, 2 skipped` on macOS).
+3. A failed run leaves a screenshot and a JSON context file behind. **Done** — offline (`engine/dump.py`) and live. The live dump has not been sent back, and it is the input PR 4.2 is gated on.
+4. A human can repair a broken image target through the HITL UI without opening an editor. **Done offline** (`hitl/repair.py` tested; `hitl/app.py` opened and driven on macOS). One human check left: a real mouse drag.
 5. `Modules/arena/DailyTenArenaCommand.py` is still present and still works. Removing v1 is Phase 4's problem, and only once v2 has proven itself over real runs.
 
 ## Open questions for the epic owner
 
 1. **What OS is the assigned developer on?** **Resolved: macOS.** Offline Phase 1 is fully runnable here; live `ClickHandler` runs stay on Windows.
-2. **Who captures the screenshots, and when?** 01 and 03–09 delivered. Still need 02 (ad), 10 (out-of-tokens), and **11 (lost screen — realism check for the HITL tool, not a Phase 3 gate)**. See [Screenshots Required](./Screenshots_Required.md).
-3. **Is anyone available to do live smoke runs on the game machine?** **Yes, on request.** That run closes PR 1.3 acceptance #4 — still outstanding.
+2. **Who captures the screenshots, and when?** 01 and 03–09 delivered. Still need **10 (out-of-tokens — now blocking)**, 02 (ad), and 11 (lost screen — realism check for the HITL tool). 10 and 11 both come out of runs that are already on the list, so the answer is now "whoever does [run 6](./Windows_Live_Runbook.md#6-supervised-loop-run-until-tokens-run-out) and remembers to copy `logs/` out". See [Screenshots Required](./Screenshots_Required.md).
+3. **Is anyone available to do live smoke runs on the game machine?** **Yes — and runs 1, 2 and 5 have now passed.** What that session showed is that the runs are not the bottleneck; getting the artefacts back off the machine is. `logs/` is gitignored, so both the run logs and the crash dump stayed behind.
+4. **Does `DailyQuests` need exactly 5 Arena battles, or all of them?** Now that Arena fights until tokens run out, "exactly 5" would reopen the [counter decision](./Ticket_4_Phase4_Migration.md#resolved-2026-08-01-option-3-until-exhausted) rather than being a parameter. Worth answering before PR 4.2, not during it.

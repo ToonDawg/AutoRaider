@@ -1,0 +1,65 @@
+# configs/daily_quests/summon_v2.yaml
+name: "Daily Quests - portal summons until exhausted"
+start_node: open_portal
+
+nodes:
+  open_portal:
+    action: CLICK_IMAGE
+    target: portal.png
+    settle_seconds: 2
+    on_success: open_daily_as
+    on_failure: swipe_find_portal
+
+  swipe_find_portal:
+    action: SWIPE
+    target: down
+    settle_seconds: 0
+    on_success: swipe_right_portal
+
+  swipe_right_portal:
+    action: SWIPE
+    target: right
+    settle_seconds: 1
+    on_success: open_portal_retry
+
+  open_portal_retry:
+    action: CLICK_IMAGE
+    target: portal.png
+    settle_seconds: 2
+    on_success: open_daily_as
+    on_failure: done
+
+  open_daily_as:
+    action: CLICK_IMAGE
+    target: dailyAS.png
+    settle_seconds: 2
+    on_success: summon_one
+    on_failure: done
+
+  summon_one:
+    action: CLICK_IMAGE
+    target: summonOne.png
+    settle_seconds: 1
+    on_success: await_more
+    on_failure: done
+
+  await_more:
+    action: WAIT_FOR_IMAGE
+    target: summonOneMore.png
+    timeout_seconds: 15
+    on_success: summon_more
+    on_failure: done
+
+  summon_more:
+    action: CLICK_IMAGE
+    target: summonOneMore.png
+    settle_seconds: 1
+    note: "Until-exhausted — keep summoning while the button remains."
+    on_success: await_more
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

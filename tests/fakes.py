@@ -29,17 +29,62 @@ class FakeScreen:
         queue = self.results.get(image_name)
         return queue.pop(0) if queue else False
 
-    def click_image(self, image_name: str, description: str = "",
-                    retries: int = 1, delay: int = 1) -> bool:
-        self._record("click_image", (image_name,),
-                     {"description": description, "retries": retries, "delay": delay})
+    def click_image(
+        self,
+        image_name: str,
+        description: str = "",
+        retries: int = 1,
+        delay: int = 1,
+        match: str = "best",
+        offset: tuple[int, int] = (0, 0),
+    ) -> bool:
+        self._record(
+            "click_image",
+            (image_name,),
+            {
+                "description": description,
+                "retries": retries,
+                "delay": delay,
+                "match": match,
+                "offset": offset,
+            },
+        )
         return self._next(image_name)
 
-    def wait_for_image(self, image_name: str, description: str = "",
-                       timeout: int = 30, check_interval: int = 2) -> bool:
-        self._record("wait_for_image", (image_name,),
-                     {"description": description, "timeout": timeout,
-                      "check_interval": check_interval})
+    def wait_for_image(
+        self,
+        image_name: str,
+        description: str = "",
+        timeout: int = 30,
+        check_interval: int = 2,
+    ) -> bool:
+        self._record(
+            "wait_for_image",
+            (image_name,),
+            {
+                "description": description,
+                "timeout": timeout,
+                "check_interval": check_interval,
+            },
+        )
+        return self._next(image_name)
+
+    def wait_until_disappears(
+        self,
+        image_name: str,
+        description: str = "",
+        timeout: int = 30,
+        check_interval: int = 2,
+    ) -> bool:
+        self._record(
+            "wait_until_disappears",
+            (image_name,),
+            {
+                "description": description,
+                "timeout": timeout,
+                "check_interval": check_interval,
+            },
+        )
         return self._next(image_name)
 
     def is_image_present(self, image_name: str, description: str = "") -> bool:
@@ -48,6 +93,30 @@ class FakeScreen:
 
     def press_key(self, key: str, description: str = "") -> None:
         self._record("press_key", (key,), {"description": description})
+
+    def swipe(
+        self,
+        direction: str,
+        description: str = "",
+        distance: int = 400,
+        duration: float = 0.5,
+        origin_x: int | None = None,
+        origin_y: int | None = None,
+    ) -> None:
+        self._record(
+            "swipe",
+            (direction,),
+            {
+                "description": description,
+                "distance": distance,
+                "duration": duration,
+                "origin_x": origin_x,
+                "origin_y": origin_y,
+            },
+        )
+
+    def click_point(self, x: int, y: int, description: str = "") -> None:
+        self._record("click_point", (x, y), {"description": description})
 
 
 class FakeClickHandler(FakeScreen):

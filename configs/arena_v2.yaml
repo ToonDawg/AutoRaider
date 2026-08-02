@@ -1,9 +1,14 @@
 # configs/arena_v2.yaml
-name: "Arena - single classic battle"
+name: "Arena - classic battles until tokens run out"
 start_node: close_popup_ads
 
 # on_failure is omitted where a failure means the bot is lost.
 # An omitted edge is null, which ends the run as ABORTED.
+#
+# Repetition is a cycle in this graph, not a counter: return_to_opponent_list
+# feeds back into select_opponent, and check_out_of_tokens is the only clean way
+# out. The runner caps a run at max_steps (200), so a cycle that never finds its
+# exit ends as STEP_LIMIT with a crash dump rather than spinning forever.
 
 nodes:
   close_popup_ads:
@@ -36,15 +41,21 @@ nodes:
     action: CLICK_IMAGE
     target: arenaBattle.png
     settle_seconds: 2
-    note: "Clicks the best single match. v1 clicked every visible Battle button."
+    note: >-
+      Clicks the best single match. v1 clicked every visible Battle button. Also
+      the loop's re-entry point; no on_failure, because an opponent list with no
+      Battle button on it is a screen we do not know how to continue from.
     on_success: check_out_of_tokens
 
   check_out_of_tokens:
     action: IMAGE_PRESENT
     target: ArenaRefillGems.png
     note: >-
-      Guard against spending real gems. on_success means the refill prompt IS
-      on screen, which is a legitimate stop rather than a failure.
+      Guard against spending real gems, and the loop's exit condition. on_success
+      means the refill prompt IS on screen, which is a legitimate stop rather
+      than a failure. This target is not yet verified against a real screen —
+      capture 10 is outstanding — and every run now ends here, so it is
+      load-bearing. See Screenshots_Required.md.
     on_success: leave_refill_prompt
     on_failure: start_battle
 
@@ -78,4 +89,7 @@ nodes:
     action: PRESS_KEY
     target: esc
     settle_seconds: 2
-    on_success: null
+    note: >-
+      Closes the loop. Back on the opponent list, fight again; tokens are what
+      stop us, not a count.
+    on_success: select_opponent

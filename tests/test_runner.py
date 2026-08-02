@@ -194,6 +194,8 @@ def test_node_fields_reach_handler_kwargs():
                 target="btn.png",
                 retries=3,
                 settle_seconds=7,
+                match="bottom",
+                offset=(50, 50),
                 on_success="wait",
             ),
             "wait": ActionNode(
@@ -201,19 +203,71 @@ def test_node_fields_reach_handler_kwargs():
                 target="done.png",
                 timeout_seconds=45,
                 check_interval_seconds=5,
+                on_success="gone",
+            ),
+            "gone": ActionNode(
+                action=Action.WAIT_UNTIL_DISAPPEARS,
+                target="spinner.png",
+                timeout_seconds=60,
+                check_interval_seconds=3,
+                on_success="swipe",
+            ),
+            "swipe": ActionNode(
+                action=Action.SWIPE,
+                target="up",
+                distance=200,
+                duration=0.8,
+                origin_x=600,
+                settle_seconds=0,
+                on_success="point",
+            ),
+            "point": ActionNode(
+                action=Action.CLICK_POINT,
+                target="hotspot",
+                x=100,
+                y=200,
+                settle_seconds=0,
             ),
         },
     )
-    screen = FakeScreen({"btn.png": [True], "done.png": [True]})
+    screen = FakeScreen(
+        {"btn.png": [True], "done.png": [True], "spinner.png": [True]}
+    )
     result = _runner(config, screen).run()
     assert result.outcome is Outcome.COMPLETED
 
     click = screen.calls[0]
     assert click.method == "click_image"
     assert click.kwargs["retries"] == 3
-    assert click.kwargs["delay"] == 7  # settle_seconds -> delay, NOT timeout
+    assert click.kwargs["delay"] == 7
+    assert click.kwargs["match"] == "bottom"
+    assert click.kwargs["offset"] == (50, 50)
 
     wait = screen.calls[1]
     assert wait.method == "wait_for_image"
     assert wait.kwargs["timeout"] == 45
-    assert wait.kwargs["check_interval"] == 5
+
+    gone = screen.calls[2]
+    assert gone.method == "wait_until_disappears"
+    assert gone.kwargs["timeout"] == 60
+
+    swipe = screen.calls[3]
+    assert swipe.method == "swipe"
+    assert swipe.args == ("up",)
+    assert swipe.kwargs["distance"] == 200
+    assert swipe.kwargs["origin_x"] == 600
+
+    point = screen.calls[4]
+    assert point.method == "click_point"
+    assert point.args == (100, 200)
+
+
+def test_swipe_rejects_bad_direction():
+    with pytest.raises(Exception):
+        ActionNode(action=Action.SWIPE, target="diagonal")
+
+
+def test_click_point_requires_coordinates():
+    with pytest.raises(Exception):
+        ActionNode(action=Action.CLICK_POINT, target="x")
+

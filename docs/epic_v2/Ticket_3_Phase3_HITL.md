@@ -254,10 +254,10 @@ Shortcut to produce capture 11: a deliberately-failed live run — see [Ticket 2
 
 ### 3. Still open from Phases 1 and 2
 
-- **Phase 1 live smoke run** — PR 1.3 acceptance #4. Unchanged.
-- **Phase 2 live failure run** — PR 2.2 acceptance #2 (also delivers capture 11).
-- **Captures 02 and 10** — 10 completes the gem-refill guard coverage.
-- **`back_to_bastion()` unbounded ESC loop** — tracked in [Ticket 2 → Known risk, not fixed here](./Ticket_2_Phase2_Telemetry.md#known-risk-not-fixed-here). Needs its own ticket from the epic owner. **Do not fix it as a drive-by in Phase 3.**
+- **Phase 1 live smoke run** — PR 1.3 acceptance #4. **Passed 2026-08-01.**
+- **Phase 2 live failure run** — PR 2.2 acceptance #2. Ran, but the dump never left the game machine, so capture 11 is still outstanding and PR 4.2's gate still has no input. Getting that file is the cheapest useful thing anyone can do right now, and it is also the best fixture for the real-mouse-drag check above.
+- **Capture 02, and capture 10 — now blocking.** `ArenaRefillGems.png` became the Arena sequence's only clean exit once the config started looping, so every run ends on an unverified crop. See [Screenshots Required](./Screenshots_Required.md#why-capture-10-went-from-high-priority-to-blocking).
+- **`back_to_bastion()` unbounded ESC loop** — now [Ticket 5](./Ticket_5_BackToBastion_Cap.md). It is worse than first flagged: F2 cannot interrupt it, and `SequenceCommand` cleanup calls it from a `finally`, so every v2 failure ends there. **Still do not fix it as a drive-by.**
 
 ---
 

@@ -49,15 +49,19 @@ This needs an explicit decision from the epic owner before Phase 4 can finish, a
 
 Option 1 requires no schema change at all. Do not invent a counter node type.
 
-### Recommendation: option 1, awaiting sign-off
+### Resolved 2026-08-01: option 3, "until exhausted"
 
-**PR 4.1 built option 1 and does not commit anyone to it.** `SequenceCommand` takes `repeat: int = 1`; the registered `classic_arena_v2` key uses the default, so nothing in the app repeats anything yet. The decision only becomes load-bearing at PR 4.2, when `DailyQuests` swaps `arena_battles.execute(5)` for `SequenceCommand(..., ARENA_V2_CONFIG, repeat=5)`. It is cheap to change until then, and option 2 would still be available.
+**The epic owner chose option 3.** Arena should use all its tokens and then stop; nothing needs an exact count. Implemented as a cycle in `configs/arena_v2.yaml` — `return_to_opponent_list.on_success` points back at `select_opponent` — which is exactly what the guardrails predicted: *looping comes from cycles in the graph, not from a loop construct*. One edge, no schema change, no new action type, no counter.
 
-Two things the epic owner should weigh before signing off, both discovered while wiring it:
+This is better than the option 1 the recommendation below argued for, and the reason is the objection that was already recorded against it:
 
-**Repeat cannot see why an attempt ended.** The refill guard in `arena_v2.yaml` is a legitimate stop, so running out of tokens exits `leave_refill_prompt` with a null `on_success` and reports `COMPLETED`. A caller asking for 5 will therefore do all 5, and attempts 2–5 will each navigate to the Arena, find the refill prompt, and ESC back out. Nothing is spent and nothing breaks — it just wastes about a minute. Today v1 detects this and stops immediately.
+**Repeat could not see why an attempt ended.** The refill guard is a legitimate stop, so running out of tokens reports `COMPLETED`. A caller asking for 5 would have done all 5, with attempts 2–5 each navigating to the Arena, finding the refill prompt, and ESC-ing back out. The cycle has no such problem — the guard *is* the exit, so the run stops the moment tokens are gone. The "second outcome" schema question that fixing option 1 would have raised does not need answering.
 
-Fixing it properly means the sequence needs a way to say *"finished, and do not call me again"*, which is a second outcome, not a counter. That is a schema question worth answering deliberately rather than smuggling into the cutover. The cheap alternative is to leave it: five wasted navigations once a day, on a bot that already runs unattended.
+**What this means for PR 4.2.** `DailyQuests` calls `arena_battles.execute(5)`. Under option 3 the v2 equivalent takes no count at all: run the sequence once and it fights everything it can. Confirm before cutting over that Daily Quests genuinely wants "all tokens" rather than "exactly 5" — if it does want a hard 5, that reopens this decision rather than being a parameter to pass.
+
+**`repeat` stays, unused.** `SequenceCommand` still takes `repeat: int = 1` and it is still tested. It costs nothing, `classic_arena_v2` uses the default, and a future sequence with no natural exhaustion condition may want it. Do not reach for it for Arena.
+
+**Do not make `repeat` configurable.** The 2026-08-01 live session added a GUI field writing `V2_Settings/arena_repeats` and had `execute()` read it back through `self.app.config_handler`. That broke six tests and put a game-specific config key inside an adapter whose whole point is knowing nothing about which sequence it runs. It has been reverted. The count is not a setting; the token guard is.
 
 **A failed attempt stops the remaining ones.** If an attempt does not reach `COMPLETED`, `SequenceCommand` writes the dump and returns rather than starting the next one — the bot is somewhere the sequence does not know how to start from, and repeating would multiply dumps of the same failure. v1's behaviour differs here: it swallows the error and moves on. If Daily Quests would rather get 3 battles than 0, say so and this becomes a one-line change.
 
@@ -65,7 +69,7 @@ Fixing it properly means the sequence needs a way to say *"finished, and do not 
 
 ## PR 4.1 — Run Arena v2 through the existing app
 
-**Status: DONE (offline).** `engine/sequence_command.py`, registered in `app/pyAutoRaid.py`, 9 tests in `tests/test_sequence_command.py`. Acceptance 1–3 are all live checks on the game machine — [runbook run 5](./Windows_Live_Runbook.md#5-classic_arena_v2-from-the-gui).
+**Status: DONE, live-proven 2026-08-01.** `engine/sequence_command.py`, registered in `app/pyAutoRaid.py`, 9 tests in `tests/test_sequence_command.py`. Acceptance 1–3 were live checks on the game machine and all passed — [runbook run 5](./Windows_Live_Runbook.md#5-v2-engine-tab). The tab has moved since; v2 tasks now have their own.
 
 A single adapter, so a YAML sequence can be scheduled like any other command.
 
@@ -119,7 +123,7 @@ What it means in practice: **the Phase 1 live smoke run does not prove the in-ap
 
 **Status: NOT STARTED, and deliberately so.** Do not open this until acceptance #2 below has actually happened. It is not a formality — it is the one criterion that tests the epic's premise rather than its code, and it cannot be satisfied offline, by a fixture, or by a failure that someone fixed in an editor while they were in there.
 
-The prerequisites, in order: the [runbook](./Windows_Live_Runbook.md) runs 1–5 pass, then a week of scheduled v2 runs, then at least one real failure repaired entirely through `python -m hitl`. Also settle the [counter decision](#recommendation-option-1-awaiting-sign-off) and, if run 2 exposed it, the region-provider question, before any key is repointed.
+The prerequisites, in order: the [runbook](./Windows_Live_Runbook.md) runs 1–6 pass, then a week of scheduled v2 runs, then at least one real failure repaired entirely through `python -m hitl`. Runs 1, 2 and 5 have passed; run 6 (the supervised loop) and run 4's dump are what remain. The [counter decision](#resolved-2026-08-01-option-3-until-exhausted) is settled; the region-provider question is not, if run 2 exposed it, and both want answering before any key is repointed.
 
 Run `classic_arena_v2` on the real schedule for a meaningful stretch (at least a week of scheduled runs), fixing failures through the HITL tool rather than by editing Python. The measure of success is that the HITL loop actually works: dumps get produced, crops get repaired, runs get better.
 
@@ -178,3 +182,20 @@ tests/test_seam.py             # + guard: engine.sequence_command imports withou
 No new dependencies. Nothing in `Modules/` or `gui/` was touched, and every change to an existing file is additive apart from the one rename in `engine/run.py`.
 
 `config.ini` is not edited by hand. `ConfigHandler._initialize_enum_settings` adds `classic_arena_v2 = False` under `[Settings]` on the next launch, and the task presets do not mention the key at all, so `run_task` will never pick it up until someone ticks the checkbox. The v2 command cannot fire on a schedule by accident.
+
+## Deliverables — post-live cleanup (2026-08-01)
+
+The live session's own commit needed unpicking; the four regressions and their fixes are tabulated in [the epic](./Epic_AutoRaider_v2.md#what-the-live-run-brought-back). What that added on top of PR 4.1:
+
+```
+configs/arena_v2.yaml          # return_to_opponent_list loops back to select_opponent
+engine/sequence_command.py     # + V2_TASKS_SECTION, is_sequence_command(); dynamic repeat reverted
+gui/v2_tab.py                  # v2 task list (checkbox + Run Selected), not a settings form
+gui/tasks_tab.py               # v1 commands only; warns when removing a preset orphans schedules
+config.ini                     # presets restored; v2 keys moved to [V2 Tasks]
+tests/test_arena_config.py     # loop terminates on the token guard; STEP_LIMIT when it never fires
+tests/test_replay.py           # two turns of the loop over real frames
+tests/screenshot_screen.py     # press_key advances the frame — ESC changes the screen
+```
+
+`gui/` is no longer untouched, which the PR 4.1 note above claims. That claim was true when written; the GUI split is what makes "a v2 task cannot reach the scheduler" structural instead of conventional, and it is described under run 5 in the [runbook](./Windows_Live_Runbook.md#5-v2-engine-tab).

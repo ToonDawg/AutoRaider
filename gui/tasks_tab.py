@@ -1,9 +1,12 @@
+import ast
+import json
 from enum import Enum
 import customtkinter as ctk
 from typing import Dict, Any
 from PIL import Image
 
 from app.pyAutoRaid import AutoRaider
+from engine.sequence_command import is_sequence_command
 from utils.config_handler import ConfigHandler
 
 
@@ -97,8 +100,20 @@ class TasksTab:
         )
         self.remove_button.pack(side="left")
 
+    def _v1_commands(self) -> list:
+        """v2 tasks are deliberately absent here. Presets on this tab are what
+        the scheduler runs by name, so listing a v2 task would make it possible
+        to put one on a timer by ticking a box. The V2 Engine tab owns them.
+        """
+        registry = self.py_auto_raid.command_factory.registry
+        return [
+            (key, info["display_name"])
+            for key, info in registry.items()
+            if not is_sequence_command(info["command_class"])
+        ]
+
     def _create_task_checkboxes(self) -> None:
-        for i, (command_key, display_name) in enumerate(self.py_auto_raid.command_factory.get_display_names()):
+        for i, (command_key, display_name) in enumerate(self._v1_commands()):
             initial_value = False
             var = ctk.BooleanVar(value=initial_value)
             self.checkbox_vars[command_key] = var
@@ -198,8 +213,34 @@ class TasksTab:
             self.config_handler.save_config()
             self.py_auto_raid.logger.info(f"Added selection item: {item}")
 
+    def _schedules_naming(self, item: str) -> list:
+        """Schedule entries that resolve to `item`. Removing the preset leaves
+        these pointing at a section that no longer exists, and the failure only
+        surfaces when the schedule next fires.
+
+        Schedules are written both as JSON and as a Python dict repr depending on
+        which code path saved them, so both have to be readable here.
+        """
+        found = []
+        for schedule_id, raw in (self.config_handler.read_setting("Schedules", None) or {}).items():
+            for parse in (json.loads, ast.literal_eval):
+                try:
+                    if parse(raw).get("name") == item:
+                        found.append(schedule_id)
+                    break
+                except Exception:
+                    continue
+        return found
+
     def remove_selection_item(self, item: str) -> None:
         if item in self.selection_items:
+            orphaned = self._schedules_naming(item)
+            if orphaned:
+                self.py_auto_raid.logger.warning(
+                    f"Removing '{item}' orphans {len(orphaned)} schedule(s): "
+                    f"{', '.join(orphaned)}. They will fail when they next fire "
+                    f"until they are repointed or deleted on the Scheduling tab."
+                )
             self.selection_items.remove(item)
             self.selection_menu.configure(values=self.selection_items)
             self.config_handler.update_setting("SelectionItems", "items", self.selection_items)

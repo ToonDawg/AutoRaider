@@ -1,0 +1,44 @@
+# configs/rewards/clan_v2.yaml
+name: "Rewards - clan check-in and treasure"
+start_node: open_clan
+
+nodes:
+  open_clan:
+    action: WAIT_FOR_IMAGE
+    target: clanBTN.png
+    timeout_seconds: 5
+    on_success: click_clan
+    on_failure: done
+
+  click_clan:
+    action: CLICK_IMAGE
+    target: clanBTN.png
+    settle_seconds: 1
+    on_success: open_members
+
+  open_members:
+    action: CLICK_IMAGE
+    target: clanMembers.png
+    settle_seconds: 1
+    on_success: check_in
+    on_failure: check_in
+
+  check_in:
+    action: CLICK_IMAGE
+    target: clanCheckIn.png
+    settle_seconds: 1
+    on_success: check_in
+    on_failure: open_treasure
+
+  open_treasure:
+    action: CLICK_IMAGE
+    target: clanTreasure.png
+    settle_seconds: 1
+    on_success: done
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

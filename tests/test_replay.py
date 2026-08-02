@@ -14,12 +14,17 @@ ASSETS = REPO / "assets"
 SHOTS = REPO / "tests" / "screenshots"
 CONFIG = REPO / "configs" / "arena_v2.yaml"
 
-# Replay order for the happy path. Capture 02 (ad) is absent; close_popup_ads
-# fails on 01 and continues via on_failure, which is the normal case.
-REPLAY_ORDER = [
+# Capture 02 (ad) is absent; close_popup_ads fails on 01 and continues via
+# on_failure, which is the normal case.
+PREAMBLE = [
     "01_bastion.png",
     "03_battle_menu.png",
     "04_arena_mode_selection.png",
+]
+
+# One battle, starting from the opponent list. ESC at the end lands us back on
+# the list, so replaying this twice is what the graph's cycle actually sees.
+ONE_BATTLE = [
     "05_arena_opponent_list.png",
     "06_pre_battle_team.png",
     "07_loading_screen.png",
@@ -27,8 +32,20 @@ REPLAY_ORDER = [
     "09_battle_results.png",
 ]
 
+BATTLES = 2
+REPLAY_ORDER = PREAMBLE + ONE_BATTLE * BATTLES
 
-def test_arena_screenshot_replay_reaches_completed():
+
+def test_arena_screenshot_replay_loops_over_real_frames():
+    """Every target matches its real frame, in graph order, twice round the loop.
+
+    The run cannot reach COMPLETED here, and that is not a defect in the config:
+    the only clean exit is the refill prompt, and capture 10 has not been
+    delivered, so the corpus contains no out-of-tokens frame. It therefore ends
+    the one honest way it can — the screenshots run dry and `select_opponent`
+    finds no Battle button. `test_arena_config.py` covers the clean exit against
+    FakeScreen; this test covers the templates against real pixels.
+    """
     missing = [name for name in REPLAY_ORDER if not (SHOTS / name).is_file()]
     assert not missing, f"missing screenshots for replay: {missing}"
 
@@ -44,10 +61,16 @@ def test_arena_screenshot_replay_reaches_completed():
         sleep=lambda _: None,
     ).run()
 
-    assert result.outcome is Outcome.COMPLETED, (
-        f"replay aborted at {result.last_node}; visited={result.visited}; "
-        f"calls={screen.calls}; index={screen.index}"
+    context = (
+        f"outcome={result.outcome} last_node={result.last_node}; "
+        f"visited={result.visited}; calls={screen.calls}; index={screen.index}"
     )
-    assert "start_battle" in result.visited
-    assert "return_to_opponent_list" in result.visited
-    assert "leave_refill_prompt" not in result.visited
+    assert result.visited.count("start_battle") == BATTLES, context
+    assert result.visited.count("return_to_opponent_list") == BATTLES, context
+    assert result.visited.count("select_opponent") == BATTLES + 1, context
+
+    # Ran out of screenshots rather than out of tokens.
+    assert result.outcome is Outcome.ABORTED, context
+    assert result.last_node == "select_opponent", context
+    assert screen.current is None, context
+    assert "leave_refill_prompt" not in result.visited, context

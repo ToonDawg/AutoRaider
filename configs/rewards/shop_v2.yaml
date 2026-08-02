@@ -1,0 +1,69 @@
+# configs/rewards/shop_v2.yaml
+name: "Rewards - shop free shard claims"
+start_node: wait_shop
+
+# Offer-row free-gift scanning (v1 clicked every x from 724..1400) is dropped;
+# AS/MS claim loops cover the reliable part. offers.PNG / claimFreeGift.PNG
+# use the on-disk case.
+
+nodes:
+  wait_shop:
+    action: WAIT_FOR_IMAGE
+    target: shopBTN.png
+    timeout_seconds: 5
+    on_success: open_shop
+    on_failure: done
+
+  open_shop:
+    action: CLICK_IMAGE
+    target: shopBTN.png
+    settle_seconds: 2
+    on_success: claim_as
+
+  claim_as:
+    action: CLICK_IMAGE
+    target: claimAS.png
+    settle_seconds: 2
+    on_success: confirm_as
+    on_failure: claim_ms
+
+  confirm_as:
+    action: CLICK_IMAGE
+    target: defaultClaim.png
+    settle_seconds: 3
+    on_success: claim_as
+    on_failure: claim_ms
+
+  claim_ms:
+    action: CLICK_IMAGE
+    target: claimMS.png
+    settle_seconds: 2
+    on_success: confirm_ms
+    on_failure: open_offers
+
+  confirm_ms:
+    action: CLICK_IMAGE
+    target: defaultClaim.png
+    settle_seconds: 3
+    on_success: claim_ms
+    on_failure: open_offers
+
+  open_offers:
+    action: CLICK_IMAGE
+    target: offers.PNG
+    settle_seconds: 2
+    on_success: claim_gift
+    on_failure: done
+
+  claim_gift:
+    action: CLICK_IMAGE
+    target: claimFreeGift.PNG
+    settle_seconds: 1
+    on_success: claim_gift
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

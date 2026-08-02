@@ -1,0 +1,249 @@
+# configs/clan_boss_v2.yaml
+name: "Clan Boss - spend keys on Hard/Nightmare/Brutal until exhausted"
+start_node: close_popup_ads
+
+# Until-exhausted: no PlannedClanBossFightsToday bookkeeping. Difficulty
+# selection uses existing templates (CBhard / CBnightmare / Brutal) rather
+# than the v1 absolute coordinates — see docs/epic_v2/Coordinate_Strategy.md.
+# Ultra-Nightmare has no stable template yet and is skipped.
+
+nodes:
+  close_popup_ads:
+    action: CLICK_IMAGE
+    target: exitAdd.png
+    settle_seconds: 3
+    on_success: open_battle_menu
+    on_failure: open_battle_menu
+
+  open_battle_menu:
+    action: CLICK_IMAGE
+    target: battleBTN.png
+    settle_seconds: 1
+    on_success: swipe_to_cb
+
+  swipe_to_cb:
+    action: SWIPE
+    target: left
+    settle_seconds: 1
+    on_success: open_clan_boss
+
+  open_clan_boss:
+    action: CLICK_IMAGE
+    target: CB.png
+    settle_seconds: 1
+    on_success: open_demon_lord
+
+  open_demon_lord:
+    action: CLICK_IMAGE
+    target: demonLord2.png
+    settle_seconds: 1
+    on_success: scroll_difficulties
+
+  scroll_difficulties:
+    action: SWIPE
+    target: up
+    origin_x: 1200
+    settle_seconds: 1
+    on_success: pick_hard
+
+  # --- Hard ---
+  pick_hard:
+    action: CLICK_IMAGE
+    target: CBhard.png
+    settle_seconds: 1
+    on_success: claim_hard
+    on_failure: pick_nightmare
+
+  claim_hard:
+    action: CLICK_IMAGE
+    target: CBclaim.png
+    settle_seconds: 1
+    on_success: accept_claim_hard
+    on_failure: battle_hard
+
+  accept_claim_hard:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: claim_hard
+
+  battle_hard:
+    action: CLICK_IMAGE
+    target: CBbattle.png
+    settle_seconds: 2
+    on_success: check_nokey_hard
+    on_failure: pick_nightmare
+
+  check_nokey_hard:
+    action: IMAGE_PRESENT
+    target: CBnokey.png
+    on_success: leave_nokey_hard
+    on_failure: start_hard
+
+  leave_nokey_hard:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: pick_nightmare
+
+  start_hard:
+    action: CLICK_IMAGE
+    target: CBstart.png
+    settle_seconds: 1
+    on_success: await_hard
+
+  await_hard:
+    action: WAIT_FOR_IMAGE
+    target: resultClanBoss.png
+    timeout_seconds: 300
+    check_interval_seconds: 5
+    on_success: leave_hard_results
+
+  leave_hard_results:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: leave_hard_battle
+
+  leave_hard_battle:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: pick_nightmare
+
+  # --- Nightmare ---
+  pick_nightmare:
+    action: CLICK_IMAGE
+    target: CBnightmare.png
+    settle_seconds: 1
+    on_success: claim_nightmare
+    on_failure: pick_brutal
+
+  claim_nightmare:
+    action: CLICK_IMAGE
+    target: CBclaim.png
+    settle_seconds: 1
+    on_success: accept_claim_nightmare
+    on_failure: battle_nightmare
+
+  accept_claim_nightmare:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: claim_nightmare
+
+  battle_nightmare:
+    action: CLICK_IMAGE
+    target: CBbattle.png
+    settle_seconds: 2
+    on_success: check_nokey_nightmare
+    on_failure: pick_brutal
+
+  check_nokey_nightmare:
+    action: IMAGE_PRESENT
+    target: CBnokey.png
+    on_success: leave_nokey_nightmare
+    on_failure: start_nightmare
+
+  leave_nokey_nightmare:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: pick_brutal
+
+  start_nightmare:
+    action: CLICK_IMAGE
+    target: CBstart.png
+    settle_seconds: 1
+    on_success: await_nightmare
+
+  await_nightmare:
+    action: WAIT_FOR_IMAGE
+    target: resultClanBoss.png
+    timeout_seconds: 300
+    check_interval_seconds: 5
+    on_success: leave_nightmare_results
+
+  leave_nightmare_results:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: leave_nightmare_battle
+
+  leave_nightmare_battle:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: pick_brutal
+
+  # --- Brutal ---
+  pick_brutal:
+    action: CLICK_IMAGE
+    target: Brutal.png
+    settle_seconds: 1
+    on_success: claim_brutal
+    on_failure: done
+
+  claim_brutal:
+    action: CLICK_IMAGE
+    target: CBclaim.png
+    settle_seconds: 1
+    on_success: accept_claim_brutal
+    on_failure: battle_brutal
+
+  accept_claim_brutal:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: claim_brutal
+
+  battle_brutal:
+    action: CLICK_IMAGE
+    target: CBbattle.png
+    settle_seconds: 2
+    on_success: check_nokey_brutal
+    on_failure: done
+
+  check_nokey_brutal:
+    action: IMAGE_PRESENT
+    target: CBnokey.png
+    on_success: leave_nokey_brutal
+    on_failure: start_brutal
+
+  leave_nokey_brutal:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: done
+
+  start_brutal:
+    action: CLICK_IMAGE
+    target: CBstart.png
+    settle_seconds: 1
+    on_success: await_brutal
+
+  await_brutal:
+    action: WAIT_FOR_IMAGE
+    target: resultClanBoss.png
+    timeout_seconds: 300
+    check_interval_seconds: 5
+    on_success: leave_brutal_results
+
+  leave_brutal_results:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: leave_brutal_battle
+
+  leave_brutal_battle:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    note: "Keys spent or no difficulty left — until-exhausted stop."
+    on_success: null

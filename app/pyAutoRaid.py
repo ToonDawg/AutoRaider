@@ -16,7 +16,17 @@ from Modules.daily_quests.RewardsCommand import RewardsCommand
 from Modules.doom_tower.DoomTower import DoomTowerCommand
 from Modules.dungeons.IronTwins import IronTwinsCommand
 from Modules.faction_wars.FactionWars import FactionWarsCommand
-from engine.sequence_command import ARENA_V2_CONFIG, SequenceCommand
+from engine.sequence_command import (
+    ARENA_V2_CONFIG,
+    CLAN_BOSS_V2_CONFIG,
+    DAILY_QUESTS_V2_CONFIGS,
+    DOOM_TOWER_V2_CONFIG,
+    FACTION_WARS_V2_CONFIG,
+    IRON_TWINS_V2_CONFIG,
+    REWARDS_V2_CONFIGS,
+    TAG_TEAM_V2_CONFIG,
+    SequenceCommand,
+)
 from utils.base_command import CommandBase
 from utils.command_factory import CommandFactory, CommandKeys
 from utils.click_handler import ClickHandler
@@ -46,13 +56,47 @@ class AutoRaider:
         self.command_factory.register_command(CommandKeys.REWARDS, "Collect Rewards", RewardsCommand)
         self.command_factory.register_command(CommandKeys.FACTION_WARS, "Faction Wars", FactionWarsCommand)
 
-        # v2 engine, alongside the v1 Classic Arena above — not replacing it.
-        # One battle per run so a manual run can be watched end to end; the
-        # repeat count moves to the caller when Daily Quests migrates.
+        # v2 engine, alongside the v1 commands above — not replacing them.
+        # Each appears only on the V2 Engine tab and cannot be scheduled.
         self.command_factory.register_command(
             CommandKeys.CLASSIC_ARENA_V2,
             "Classic Arena (v2 engine)",
             SequenceCommand.bind(ARENA_V2_CONFIG),
+        )
+        self.command_factory.register_command(
+            CommandKeys.IRON_TWINS_V2,
+            "Iron Twins (v2 engine)",
+            SequenceCommand.bind(IRON_TWINS_V2_CONFIG),
+        )
+        self.command_factory.register_command(
+            CommandKeys.TAG_TEAM_ARENA_V2,
+            "Tag Team Arena (v2 engine)",
+            SequenceCommand.bind(TAG_TEAM_V2_CONFIG),
+        )
+        self.command_factory.register_command(
+            CommandKeys.FACTION_WARS_V2,
+            "Faction Wars (v2 engine)",
+            SequenceCommand.bind(FACTION_WARS_V2_CONFIG),
+        )
+        self.command_factory.register_command(
+            CommandKeys.CLANBOSS_V2,
+            "Clan Boss (v2 engine)",
+            SequenceCommand.bind(CLAN_BOSS_V2_CONFIG),
+        )
+        self.command_factory.register_command(
+            CommandKeys.DOOM_TOWER_V2,
+            "Doom Tower (v2 engine)",
+            SequenceCommand.bind(DOOM_TOWER_V2_CONFIG),
+        )
+        self.command_factory.register_command(
+            CommandKeys.REWARDS_V2,
+            "Collect Rewards (v2 engine)",
+            SequenceCommand.bind(REWARDS_V2_CONFIGS),
+        )
+        self.command_factory.register_command(
+            CommandKeys.DAILY_QUESTS_V2,
+            "Daily Quests (v2 engine)",
+            SequenceCommand.bind(DAILY_QUESTS_V2_CONFIGS),
         )
 
         # Initialization steps
@@ -209,7 +253,10 @@ class AutoRaider:
         self.click_handler.cancel_flag = False
         self.make_sure_raid_is_open()
 
-        # Reload configuration to ensure we have the latest changes from the GUI
+        # MainGUI builds its own ConfigHandler, so checkbox changes are written to
+        # disk by a different instance than this one. Without re-reading, a task
+        # runs against whatever the config looked like at startup. Note this
+        # merges rather than replaces, so options deleted on disk linger here.
         self.config_handler.config.read(self.config_handler.config_file)
         
         # Retrieve the entire "Tasks" section as a dictionary

@@ -1,0 +1,93 @@
+# configs/iron_twins_v2.yaml
+name: "Iron Twins - stage 15 multi-battle"
+start_node: close_popup_ads
+
+# Linear nav + bottom-most Stage 15 match. Multi-battle completion is
+# WAIT_UNTIL_DISAPPEARS on the in-battle control, then confirm the complete
+# screen. No swipe, no coordinates — first module to force those two engine
+# gaps without the rest.
+
+nodes:
+  close_popup_ads:
+    action: CLICK_IMAGE
+    target: exitAdd.png
+    settle_seconds: 3
+    note: "Best effort — no ad is the normal case."
+    on_success: open_battle_menu
+    on_failure: open_battle_menu
+
+  open_battle_menu:
+    action: CLICK_IMAGE
+    target: battleBTN.png
+    settle_seconds: 1
+    on_success: open_dungeons
+
+  open_dungeons:
+    action: CLICK_IMAGE
+    target: dungeons.png
+    settle_seconds: 1
+    on_success: open_iron_twins
+
+  open_iron_twins:
+    action: CLICK_IMAGE
+    target: ironTwinsDungeon.png
+    settle_seconds: 2
+    on_success: select_stage_15
+
+  select_stage_15:
+    action: CLICK_IMAGE
+    target: ironTwinsStage15.png
+    match: bottom
+    settle_seconds: 1
+    note: "v1 picked the largest-y Stage 15 match."
+    on_success: check_stage_still_visible
+
+  check_stage_still_visible:
+    action: IMAGE_PRESENT
+    target: ironTwinsStage15.png
+    note: "If the stage button is still visible, the click opened nothing useful."
+    on_success: dismiss_stage_overlay
+    on_failure: open_multi
+
+  dismiss_stage_overlay:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    on_success: open_multi
+
+  open_multi:
+    action: CLICK_IMAGE
+    target: multiBattleButton.png
+    settle_seconds: 1
+    on_success: confirm_multi
+
+  confirm_multi:
+    action: CLICK_IMAGE
+    target: startMultiBattle.png
+    settle_seconds: 5
+    on_success: await_multi_indicator
+
+  await_multi_indicator:
+    action: WAIT_FOR_IMAGE
+    target: turnOffMultiBattle.png
+    timeout_seconds: 30
+    check_interval_seconds: 2
+    note: "Wait until the multi-battle UI is actually up before watching it leave."
+    on_success: await_multi_done
+    on_failure: await_complete_screen
+
+  await_multi_done:
+    action: WAIT_UNTIL_DISAPPEARS
+    target: turnOffMultiBattle.png
+    timeout_seconds: 600
+    check_interval_seconds: 5
+    note: "Multi-battle runs until the turn-off control disappears."
+    on_success: await_complete_screen
+    on_failure: await_complete_screen
+
+  await_complete_screen:
+    action: WAIT_FOR_IMAGE
+    target: multiBattleComplete.png
+    timeout_seconds: 120
+    check_interval_seconds: 3
+    on_success: null

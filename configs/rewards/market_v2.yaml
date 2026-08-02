@@ -1,0 +1,114 @@
+# configs/rewards/market_v2.yaml
+name: "Rewards - market shard purchases"
+start_node: close_popup_ads
+
+nodes:
+  close_popup_ads:
+    action: CLICK_IMAGE
+    target: exitAdd.png
+    settle_seconds: 3
+    on_success: open_market
+    on_failure: open_market
+
+  open_market:
+    action: CLICK_IMAGE
+    target: theMarket.png
+    settle_seconds: 1
+    on_success: buy_mystery
+    on_failure: swipe_find_market
+
+  swipe_find_market:
+    action: SWIPE
+    target: up
+    settle_seconds: 0
+    on_success: swipe_right_market
+
+  swipe_right_market:
+    action: SWIPE
+    target: right
+    settle_seconds: 1
+    on_success: open_market_retry
+
+  open_market_retry:
+    action: CLICK_IMAGE
+    target: theMarket.png
+    settle_seconds: 1
+    on_success: buy_mystery
+    on_failure: click_market_fallback
+
+  click_market_fallback:
+    action: CLICK_POINT
+    target: market_hotspot
+    x: 1000
+    y: 600
+    settle_seconds: 1
+    note: "Fallback until market icon is always findable."
+    on_success: buy_mystery
+
+  buy_mystery:
+    action: CLICK_IMAGE
+    target: shopShard.png
+    settle_seconds: 1
+    on_success: get_mystery
+    on_failure: buy_ancient
+
+  get_mystery:
+    action: CLICK_IMAGE
+    target: getShard.png
+    settle_seconds: 1
+    on_success: get_mystery
+    on_failure: buy_ancient
+
+  buy_ancient:
+    action: CLICK_IMAGE
+    target: marketAS.png
+    settle_seconds: 1
+    on_success: get_ancient
+    on_failure: swipe_more
+
+  get_ancient:
+    action: CLICK_IMAGE
+    target: getAS.png
+    settle_seconds: 1
+    on_success: get_ancient
+    on_failure: swipe_more
+
+  swipe_more:
+    action: SWIPE
+    target: left
+    settle_seconds: 1
+    on_success: buy_mystery_2
+
+  buy_mystery_2:
+    action: CLICK_IMAGE
+    target: shopShard.png
+    settle_seconds: 1
+    on_success: get_mystery_2
+    on_failure: buy_ancient_2
+
+  get_mystery_2:
+    action: CLICK_IMAGE
+    target: getShard.png
+    settle_seconds: 1
+    on_success: get_mystery_2
+    on_failure: buy_ancient_2
+
+  buy_ancient_2:
+    action: CLICK_IMAGE
+    target: marketAS.png
+    settle_seconds: 1
+    on_success: get_ancient_2
+    on_failure: done
+
+  get_ancient_2:
+    action: CLICK_IMAGE
+    target: getAS.png
+    settle_seconds: 1
+    on_success: get_ancient_2
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

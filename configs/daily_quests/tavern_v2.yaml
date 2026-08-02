@@ -1,0 +1,75 @@
+# configs/daily_quests/tavern_v2.yaml
+name: "Daily Quests - tavern upgrade"
+start_node: open_tavern
+
+# Champion slot uses CLICK_POINT — no cropped champion portrait for the
+# first slot. Potion / upgrade / sacrifice stay on templates.
+
+nodes:
+  open_tavern:
+    action: CLICK_IMAGE
+    target: tav.png
+    settle_seconds: 2
+    on_success: sort_descending
+    on_failure: swipe_find_tavern
+
+  swipe_find_tavern:
+    action: SWIPE
+    target: left
+    settle_seconds: 0
+    on_success: swipe_down_tavern
+
+  swipe_down_tavern:
+    action: SWIPE
+    target: down
+    settle_seconds: 1
+    on_success: open_tavern_alt
+
+  open_tavern_alt:
+    action: CLICK_IMAGE
+    target: tavern2.png
+    settle_seconds: 2
+    on_success: sort_descending
+    on_failure: done
+
+  sort_descending:
+    action: CLICK_IMAGE
+    target: tavern_descending.png
+    settle_seconds: 2
+    on_success: pick_champion
+    on_failure: done
+
+  pick_champion:
+    action: CLICK_POINT
+    target: tavern_champion_slot
+    x: 560
+    y: 390
+    settle_seconds: 1
+    on_success: click_potion
+
+  click_potion:
+    action: CLICK_IMAGE
+    target: tavernPotion.png
+    settle_seconds: 1
+    on_success: do_upgrade
+    on_failure: done
+
+  do_upgrade:
+    action: CLICK_IMAGE
+    target: tavernUpgrade.png
+    settle_seconds: 2
+    on_success: do_sacrifice
+    on_failure: done
+
+  do_sacrifice:
+    action: CLICK_IMAGE
+    target: sacrifice.png
+    settle_seconds: 2
+    on_success: done
+    on_failure: done
+
+  done:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 0
+    on_success: null

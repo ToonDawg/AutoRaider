@@ -105,7 +105,15 @@ class ClickHandler:
         self.logger.error(f"{description} did not appear after {timeout} seconds.")
         return False
           
-    def click_image(self, image_name: str, description: str = "", retries: int = 1, delay: int = 1) -> bool:
+    def click_image(
+        self,
+        image_name: str,
+        description: str = "",
+        retries: int = 1,
+        delay: int = 1,
+        match: str = "best",
+        offset: tuple[int, int] = (0, 0),
+    ) -> bool:
         """
         Locate an image on the screen and click it.
 
@@ -114,6 +122,11 @@ class ClickHandler:
             description (str): Description for logging purposes.
             retries (int): Number of retries if the image is not found.
             delay (int): Delay (in seconds) between retries.
+            match: Which hit to use when several templates match —
+                ``best`` (default locateOnScreen), ``bottom`` (largest y),
+                or ``top`` (smallest y).
+            offset: Extra (dx, dy) applied after the match centre. Used by
+                Faction Wars banners and inbox collect buttons.
 
         Returns:
             bool: True if the image was found and clicked, False otherwise.
@@ -121,14 +134,15 @@ class ClickHandler:
         if self.cancel_flag:
             self.logger.info("Task cancellation requested during click_image.")
             raise CancellationException("Task cancelled by user.")
-            
+
         for attempt in range(retries):
             if self.cancel_flag:
                 self.logger.info("Task cancellation requested during click_image.")
                 raise CancellationException("Task cancelled by user.")
-            location = self._locate_image(image_name, description)
-            if location:
-                x, y = pyautogui.center(location)
+
+            point = self._select_match(image_name, match, description)
+            if point is not None:
+                x, y = point.x + offset[0], point.y + offset[1]
                 pyautogui.click(x, y)
                 self.logger.info(f"Clicked on {description} at ({x}, {y}).")
                 time.sleep(delay)
@@ -139,6 +153,27 @@ class ClickHandler:
 
         self.logger.error(f"Failed to click on {description} after {retries} retries.")
         return False
+
+    def _select_match(
+        self,
+        image_name: str,
+        match: str,
+        description: str = "",
+    ) -> Optional[pyautogui.Point]:
+        """Pick one locateAll centre according to the match policy."""
+        if match == "best":
+            location = self._locate_image(image_name, description)
+            return pyautogui.center(location) if location else None
+
+        centres = self._locate_all_buttons(image_name)
+        if not centres:
+            return None
+        if match == "bottom":
+            return max(centres, key=lambda p: p.y)
+        if match == "top":
+            return min(centres, key=lambda p: p.y)
+        self.logger.warning(f"Unknown match policy {match!r}; falling back to best.")
+        return centres[0]
         
     def wait_until_disappears(self, image_name: str, description: str = "", timeout: int = DEFAULT_WAIT_TIMEOUT, check_interval: int = DEFAULT_WAIT_INTERVAL) -> bool:
         """
@@ -288,7 +323,54 @@ class ClickHandler:
         pyautogui.moveTo(CENTER_X, CENTER_Y)
         pyautogui.dragRel(0, distance, duration=duration)
         time.sleep(1)
-        
+
+    def swipe(
+        self,
+        direction: str,
+        description: str = "",
+        distance: int = 400,
+        duration: float = DEFAULT_SWIPE_DURATION,
+        origin_x: int | None = None,
+        origin_y: int | None = None,
+    ) -> None:
+        """Unified swipe for the v2 engine. ``direction`` is up/down/left/right."""
+        if description:
+            self.logger.info(description)
+        ox = origin_x if origin_x is not None else CENTER_X
+        oy = origin_y if origin_y is not None else CENTER_Y
+        if direction == "up":
+            self.swipe_up(distance=distance, duration=duration, moveFromX=ox, moveFromY=oy)
+        elif direction == "down":
+            # swipe_down has no origin override; honour origin via drag here.
+            self.logger.info(
+                f"Swiping down by {distance} pixels over {duration} seconds."
+            )
+            pyautogui.moveTo(ox, oy)
+            pyautogui.dragRel(0, distance, duration=duration)
+            time.sleep(1)
+        elif direction == "left":
+            self.logger.info(
+                f"Swiping left by {distance} pixels over {duration} seconds."
+            )
+            pyautogui.moveTo(ox, oy)
+            pyautogui.dragRel(-distance, 0, duration=duration)
+            time.sleep(1)
+        elif direction == "right":
+            self.logger.info(
+                f"Swiping right by {distance} pixels over {duration} seconds."
+            )
+            pyautogui.moveTo(ox, oy)
+            pyautogui.dragRel(distance, 0, duration=duration)
+            time.sleep(1)
+        else:
+            raise ValueError(f"Unknown swipe direction: {direction!r}")
+
+    def click_point(self, x: int, y: int, description: str = "") -> None:
+        """Click absolute desktop coordinates (or window-relative if the caller
+        already offset them). Thin wrapper so ScreenActions is structural.
+        """
+        self.click((x, y), description)
+
     def delete_popup(self) -> None:
         self.logger.info("Attempting to close any pop-up ads.")
         if not self.asset_path:
