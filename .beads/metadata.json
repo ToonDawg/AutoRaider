@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "AutoRaider",
+  "project_id": "d08cab7f-3d80-475e-96cf-4b6fefb27b0c"
+}
