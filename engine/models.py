@@ -49,6 +49,10 @@ class ActionNode(BaseModel):
     on_success: str | None = None
     on_failure: str | None = None
 
+    # Iteration helper (engine tracks clicked coords and skips them if true)
+    ignore_visited: bool = False
+    clear_visited: bool = False
+
     # CLICK_IMAGE multi-match selection
     match: MatchPolicy = MatchPolicy.BEST
     offset: tuple[int, int] = (0, 0)

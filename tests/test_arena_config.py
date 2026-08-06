@@ -21,8 +21,9 @@ PREAMBLE = [
 # One turn of the cycle. return_to_opponent_list feeds back into select_opponent.
 BATTLE_LOOP = [
     "select_opponent",
-    "check_out_of_tokens",
     "start_battle",
+    "check_free_refill",
+    "check_gems_refill",
     "await_battle_end",
     "dismiss_results",
     "return_to_opponent_list",
@@ -55,9 +56,9 @@ def test_arena_fights_until_tokens_run_out():
             "arenaTab.png": [True],
             "classicArena.png": [True],
             "arenaBattle.png": [True] * (battles + 1),
-            # tokens OK for three battles, then the refill prompt shows up
+            "arenaStart.png": [True] * (battles + 1),
+            "arenaConfirm.png": [False] * (battles + 1),
             "ArenaRefillGems.png": [False] * battles + [True],
-            "arenaStart.png": [True] * battles,
             "tapToContinue.png": [True, True] * battles,  # wait then click, each
         }
     )
@@ -69,10 +70,10 @@ def test_arena_fights_until_tokens_run_out():
     assert result.visited == (
         PREAMBLE
         + BATTLE_LOOP * battles
-        + ["select_opponent", "check_out_of_tokens", "leave_refill_prompt"]
+        + ["select_opponent", "start_battle", "check_free_refill", "check_gems_refill", "leave_refill_prompt"]
     )
     assert result.last_node == "leave_refill_prompt"
-    assert result.visited.count("start_battle") == battles
+    assert result.visited.count("start_battle") == battles + 1
 
 
 def test_a_guard_that_never_fires_is_capped_not_infinite():
@@ -89,8 +90,9 @@ def test_a_guard_that_never_fires_is_capped_not_infinite():
             "arenaTab.png": [True],
             "classicArena.png": [True],
             "arenaBattle.png": [True] * max_steps,
-            "ArenaRefillGems.png": [False] * max_steps,
             "arenaStart.png": [True] * max_steps,
+            "arenaConfirm.png": [False] * max_steps,
+            "ArenaRefillGems.png": [False] * max_steps,
             "tapToContinue.png": [True] * (2 * max_steps),
         }
     )
@@ -103,6 +105,8 @@ def test_a_guard_that_never_fires_is_capped_not_infinite():
 
 
 def test_arena_refill_guard_stops_before_start_battle():
+    # Deprecated: the refill guard is now AFTER start_battle.
+    # We test the new abort_hung_team functionality instead.
     config = load_config(CONFIG_PATH)
     screen = FakeScreen(
         {
@@ -111,19 +115,16 @@ def test_arena_refill_guard_stops_before_start_battle():
             "arenaTab.png": [True],
             "classicArena.png": [True],
             "arenaBattle.png": [True],
-            "ArenaRefillGems.png": [True],  # refill prompt present
+            "arenaStart.png": [False],  # missing start button
         }
     )
     result = SequenceRunner(
-        config, screen, _logger(), sleep=lambda _: None
+        config, screen, _logger(), max_steps=20, sleep=lambda _: None
     ).run()
+    # It hits abort_hung_team, then goes back to select_opponent, finds no battle button
+    # (because ignore_visited ignored the first one, and we only supplied one True for arenaBattle.png),
+    # so it fails, swipes, goes to select_opponent_bottom, fails, hits refresh, fails, exits cleanly.
     assert result.outcome is Outcome.COMPLETED
-    assert result.last_node == "leave_refill_prompt"
-    assert "start_battle" not in result.visited
-    assert "leave_refill_prompt" in result.visited
-    # Never attempted to click arenaStart
-    assert all(
-        c.args[0] != "arenaStart.png"
-        for c in screen.calls
-        if c.method == "click_image"
-    )
+    assert result.last_node == "exit_cleanly"
+    assert "start_battle" in result.visited
+    assert "abort_hung_team" in result.visited

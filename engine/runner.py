@@ -45,8 +45,12 @@ class SequenceRunner:
     def run(self) -> RunResult:
         current = self.config.start_node
         visited: list[str] = []
+        self._clicked_points: list[tuple[int, int]] = []
 
         for step in range(1, self.max_steps + 1):
+            if getattr(self.screen, "cancel_flag", False):
+                raise CancellationException("Task cancelled by user.")
+
             node = self.config.nodes[current]
             visited.append(current)
             self.logger.info(
@@ -59,6 +63,8 @@ class SequenceRunner:
 
             try:
                 ok = self._execute(node)
+                if ok and node.clear_visited:
+                    self._clicked_points.clear()
             except CancellationException:
                 raise
             except Exception:
@@ -77,14 +83,20 @@ class SequenceRunner:
         note = node.note or node.target
 
         if node.action is Action.CLICK_IMAGE:
-            return self.screen.click_image(
+            result = self.screen.click_image(
                 node.target,
                 description=note,
                 retries=node.retries,
                 delay=node.settle_seconds,
                 match=node.match.value,
                 offset=node.offset,
+                ignore_points=self._clicked_points if node.ignore_visited else None,
             )
+            if result:
+                if isinstance(result, tuple) and node.ignore_visited:
+                    self._clicked_points.append(result)
+                return True
+            return False
 
         if node.action is Action.WAIT_FOR_IMAGE:
             return self.screen.wait_for_image(

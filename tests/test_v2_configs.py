@@ -96,6 +96,23 @@ def test_tag_team_swipes_when_no_opponent_then_exits_on_refill():
     assert "leave_refill_prompt" in result.visited
 
 
+def test_tag_team_exits_cleanly_when_list_exhausted():
+    result, screen = _run(
+        CONFIGS / "tag_team_arena_v2.yaml",
+        {
+            "exitAdd.png": [False],
+            "battleBTN.png": [True],
+            "arenaTab.png": [True],
+            "TagTeamArena.png": [True],
+            "tagArenaBattle.png": [False, False, False],  # miss pos 0, pos 200, pos 400
+        },
+    )
+    assert result.outcome is Outcome.COMPLETED
+    swipes = [c for c in screen.calls if c.method == "swipe" and c.args[0] == "up"]
+    assert len(swipes) == 2
+    assert "exit_cleanly" in result.visited
+
+
 def test_faction_wars_banner_uses_offset():
     result, screen = _run(
         CONFIGS / "faction_wars_v2.yaml",
@@ -110,6 +127,30 @@ def test_faction_wars_banner_uses_offset():
     assert result.outcome is Outcome.COMPLETED
     assert "done" in result.visited
     assert any(c.method == "swipe" for c in screen.calls)
+
+
+def test_faction_wars_reswipes_and_cycles_multiple_factions():
+    result, screen = _run(
+        CONFIGS / "faction_wars_v2.yaml",
+        {
+            "exitAdd.png": [False],
+            "battleBTN.png": [True],
+            "factionWars.png": [True],
+            "FactionWarBanner.png": [True, False, True, False],
+            "stageStart.png": [True, False, True, False],
+            "multiBattleButton.png": [True, True],
+            "startMultiBattle.png": [True, True],
+            "turnOffMultiBattle.png": [True, False, True, False],
+            "multiBattleComplete.png": [True, True],
+            "factionWarsScreen.png": [True, True],
+        },
+        max_steps=50,
+    )
+    assert result.outcome is Outcome.COMPLETED
+    assert "done" in result.visited
+    swipes = [c for c in screen.calls if c.method == "swipe"]
+    assert len(swipes) >= 4  # initial right, re-swipe right, left, re-swipe left
+
 
 
 def test_inbox_collect_passes_offset():

@@ -39,12 +39,9 @@ REPLAY_ORDER = PREAMBLE + ONE_BATTLE * BATTLES
 def test_arena_screenshot_replay_loops_over_real_frames():
     """Every target matches its real frame, in graph order, twice round the loop.
 
-    The run cannot reach COMPLETED here, and that is not a defect in the config:
-    the only clean exit is the refill prompt, and capture 10 has not been
-    delivered, so the corpus contains no out-of-tokens frame. It therefore ends
-    the one honest way it can — the screenshots run dry and `select_opponent`
-    finds no Battle button. `test_arena_config.py` covers the clean exit against
-    FakeScreen; this test covers the templates against real pixels.
+    The run ends with COMPLETED here because when screenshots are exhausted,
+    `select_opponent` finds no Battle button, it swipes, looks for bottom buttons,
+    fails, looks for refresh, fails, and then cleanly exits (`exit_cleanly`).
     """
     missing = [name for name in REPLAY_ORDER if not (SHOTS / name).is_file()]
     assert not missing, f"missing screenshots for replay: {missing}"
@@ -70,7 +67,7 @@ def test_arena_screenshot_replay_loops_over_real_frames():
     assert result.visited.count("select_opponent") == BATTLES + 1, context
 
     # Ran out of screenshots rather than out of tokens.
-    assert result.outcome is Outcome.ABORTED, context
-    assert result.last_node == "select_opponent", context
+    assert result.outcome is Outcome.COMPLETED, context
+    assert result.last_node == "exit_cleanly", context
     assert screen.current is None, context
     assert "leave_refill_prompt" not in result.visited, context

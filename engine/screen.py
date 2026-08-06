@@ -19,7 +19,8 @@ class ScreenActions(Protocol):
         delay: int = 1,
         match: str = "best",
         offset: tuple[int, int] = (0, 0),
-    ) -> bool: ...
+        ignore_points: list[tuple[int, int]] | None = None,
+    ) -> bool | tuple[int, int]: ...
 
     def wait_for_image(
         self,

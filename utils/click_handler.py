@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from typing import Optional, List, Tuple, Any, Callable
 from utils.exceptions import CancellationException
+from utils.cancellation import CancellationToken
 from utils.constants import (
     CENTER_X, CENTER_Y, DEFAULT_SWIPE_DISTANCE, 
     DEFAULT_SWIPE_DURATION, DEFAULT_CONFIDENCE,
@@ -32,9 +33,26 @@ class ClickHandler:
         self.logger = logger
         self.steps: dict[str, str] = {}
         self.asset_path: Optional[Path] = self.get_asset_path()
-        self.cancel_flag: bool = False
+        self.cancel_token = CancellationToken()
         self.ocr_handler = OCRHandler(logger)
         self._region_provider = region_provider
+
+    @property
+    def cancel_flag(self) -> bool:
+        """Return True if cancellation has been requested."""
+        return self.cancel_token.is_cancelled
+
+    @cancel_flag.setter
+    def cancel_flag(self, value: bool) -> None:
+        """Set or reset cancellation status via cancellation token."""
+        if value:
+            self.cancel_token.cancel()
+        else:
+            self.cancel_token.reset()
+
+    def sleep(self, seconds: float) -> None:
+        """Interruptible sleep using cancellation token."""
+        self.cancel_token.sleep(seconds)
 
     @property
     def region(self) -> tuple[int, int, int, int] | None:
@@ -101,7 +119,7 @@ class ClickHandler:
                 self.logger.info(f"{description} has appeared on the screen.")
                 return True
             self.logger.info(f"Waiting for {description} to appear...")
-            time.sleep(check_interval)
+            self.sleep(check_interval)
         self.logger.error(f"{description} did not appear after {timeout} seconds.")
         return False
           
@@ -113,7 +131,8 @@ class ClickHandler:
         delay: int = 1,
         match: str = "best",
         offset: tuple[int, int] = (0, 0),
-    ) -> bool:
+        ignore_points: list[tuple[int, int]] | None = None,
+    ) -> bool | tuple[int, int]:
         """
         Locate an image on the screen and click it.
 
@@ -140,16 +159,16 @@ class ClickHandler:
                 self.logger.info("Task cancellation requested during click_image.")
                 raise CancellationException("Task cancelled by user.")
 
-            point = self._select_match(image_name, match, description)
+            point = self._select_match(image_name, match, description, ignore_points)
             if point is not None:
                 x, y = point.x + offset[0], point.y + offset[1]
                 pyautogui.click(x, y)
                 self.logger.info(f"Clicked on {description} at ({x}, {y}).")
-                time.sleep(delay)
-                return True
+                self.sleep(delay)
+                return (point.x, point.y)
 
             self.logger.warning(f"{description} not found. Retrying ({attempt + 1}/{retries})...")
-            time.sleep(delay)
+            self.sleep(delay)
 
         self.logger.error(f"Failed to click on {description} after {retries} retries.")
         return False
@@ -159,15 +178,27 @@ class ClickHandler:
         image_name: str,
         match: str,
         description: str = "",
+        ignore_points: list[tuple[int, int]] | None = None,
     ) -> Optional[pyautogui.Point]:
         """Pick one locateAll centre according to the match policy."""
-        if match == "best":
-            location = self._locate_image(image_name, description)
-            return pyautogui.center(location) if location else None
-
         centres = self._locate_all_buttons(image_name)
         if not centres:
             return None
+            
+        if ignore_points:
+            import math
+            filtered = []
+            for c in centres:
+                too_close = any(math.dist((c.x, c.y), ip) < 50 for ip in ignore_points)
+                if not too_close:
+                    filtered.append(c)
+            centres = filtered
+            if not centres:
+                self.logger.warning(f"All matches for {image_name} were ignored due to proximity to past clicks.")
+                return None
+
+        if match == "best":
+            return centres[0]
         if match == "bottom":
             return max(centres, key=lambda p: p.y)
         if match == "top":
@@ -206,7 +237,7 @@ class ClickHandler:
                 return True
 
             self.logger.info(f"Waiting for {description} to disappear...")
-            time.sleep(check_interval)
+            self.sleep(check_interval)
 
         self.logger.error(f"{description} did not disappear after {timeout} seconds.")
         return False
@@ -229,7 +260,7 @@ class ClickHandler:
 
     def wait_for_multi_battle_completion(self) -> bool:
         """Wait until the multi-battle is complete."""
-        time.sleep(5)
+        self.sleep(5)
 
         if not self.is_multi_battle_active():
             self.logger.info("No active multi-battle detected.")
@@ -436,20 +467,21 @@ class ClickHandler:
             go_back = "goBack.png"
             
             while True:
+                self.cancel_token.raise_if_cancelled()
                 # Press ESC to attempt navigation
                 self.press_key("esc", "Pressing ESC key to navigate back.")
-                time.sleep(.5)
+                self.sleep(.5)
 
                 # Look for Lightning Offer popup and handle it
                 if self._locate_image(lightning_offer_text_image, "Lightning Offer detected"):
                     self.click_image(lightning_offer_text_image, "Clicking Lightning Offer popup")
-                    time.sleep(.5)
+                    self.sleep(.5)
                 
                 # Check for the Quit Game screen
                 if self._locate_image(quit_game_image, "Quit Game detected"):
                     self.logger.info("Quit Game screen found. Pressing ESC one more time to confirm.")
                     self.press_key("esc", "Pressing ESC key to confirm.")
-                    time.sleep(.5)
+                    self.sleep(.5)
 
                     # Confirm we're back in Bastion by checking there is no close image
                     if not self._locate_image(go_back):
@@ -459,6 +491,8 @@ class ClickHandler:
                 # Log progress if no critical conditions are met
                 self.logger.info("No Quit Game or Battle screen detected. Continuing ESC loop.")
 
+        except CancellationException:
+            raise
         except Exception as e:
             self.logger.error(f"Error in back_to_bastion: {e}", exc_info=True)
 
@@ -471,6 +505,7 @@ class ClickHandler:
         :param key: The key to press (e.g., "esc", "enter", "i", etc.).
         :param description: Optional description for logging the action.
         """
+        self.cancel_token.raise_if_cancelled()
         try:
             if description:
                 self.logger.info(f"Pressing key '{key}': {description}")

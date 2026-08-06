@@ -22,6 +22,7 @@ CONFIG = REPO / "configs" / "arena_v2.yaml"
 BLOCKED_BY_MISSING_CAPTURE = {
     "exitAdd.png": "02_bastion_ad.png (capture 02 not delivered)",
     "ArenaRefillGems.png": "10_out_of_tokens.png (capture 10 not delivered)",
+    "arenaConfirm.png": "free_refill.png (capture not delivered)",
 }
 
 
@@ -59,7 +60,7 @@ def test_every_screenshot_is_900x600():
 def test_target_matches_at_least_one_screenshot(target: str):
     if target in BLOCKED_BY_MISSING_CAPTURE:
         pytest.skip(
-            f"{target} cannot be verified — missing capture: "
+            f"{target} cannot be verified - missing capture: "
             f"{BLOCKED_BY_MISSING_CAPTURE[target]}"
         )
 

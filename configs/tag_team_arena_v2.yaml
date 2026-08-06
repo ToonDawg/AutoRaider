@@ -3,7 +3,8 @@ name: "Tag Team Arena - battles until tokens run out"
 start_node: close_popup_ads
 
 # Same shape as arena_v2: navigate, fight, loop until the refill-gem guard.
-# Forces SWIPE (scroll the opponent list). Until-exhausted — no 5-battle cap.
+# Multi-tier SWIPE (scrolling opponent list at 0/200/200 px like v1).
+# Until-exhausted — no 5-battle cap.
 
 nodes:
   close_popup_ads:
@@ -35,7 +36,8 @@ nodes:
     action: CLICK_IMAGE
     target: tagArenaBattle.png
     settle_seconds: 2
-    note: "Re-entry point. If no battle button, scroll then try again."
+    ignore_visited: true
+    note: "Re-entry point. Position 0 search. If no battle button, scroll."
     on_success: check_confirm
     on_failure: scroll_for_opponent
 
@@ -44,14 +46,41 @@ nodes:
     target: up
     distance: 200
     settle_seconds: 1
-    note: "v1 scrolled 0 / 200 / 200 looking for a fight button."
+    note: "First scroll (200px) looking for a battle button."
     on_success: select_opponent_after_scroll
 
   select_opponent_after_scroll:
     action: CLICK_IMAGE
     target: tagArenaBattle.png
     settle_seconds: 2
+    ignore_visited: true
+    note: "Position 200px search."
     on_success: check_confirm
+    on_failure: scroll_for_opponent_2
+
+  scroll_for_opponent_2:
+    action: SWIPE
+    target: up
+    distance: 200
+    settle_seconds: 1
+    note: "Second scroll (200px) looking for a battle button."
+    on_success: select_opponent_after_scroll_2
+
+  select_opponent_after_scroll_2:
+    action: CLICK_IMAGE
+    target: tagArenaBattle.png
+    settle_seconds: 2
+    ignore_visited: true
+    note: "Position 400px search. If exhausted, exit cleanly."
+    on_success: check_confirm
+    on_failure: exit_cleanly
+
+  exit_cleanly:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    note: "Clean exit when all opponents in list are exhausted."
+    on_success: null
 
   check_confirm:
     action: IMAGE_PRESENT
@@ -91,6 +120,14 @@ nodes:
     target: tagArenaStart.png
     settle_seconds: 1
     on_success: await_battle_end
+    on_failure: abort_hung_team
+
+  abort_hung_team:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 2
+    note: "If start button is missing, skip team and return to list."
+    on_success: select_opponent
 
   await_battle_end:
     action: WAIT_FOR_IMAGE

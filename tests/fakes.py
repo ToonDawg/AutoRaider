@@ -37,7 +37,8 @@ class FakeScreen:
         delay: int = 1,
         match: str = "best",
         offset: tuple[int, int] = (0, 0),
-    ) -> bool:
+        ignore_points: list[tuple[int, int]] | None = None,
+    ) -> bool | tuple[int, int]:
         self._record(
             "click_image",
             (image_name,),
@@ -47,6 +48,7 @@ class FakeScreen:
                 "delay": delay,
                 "match": match,
                 "offset": offset,
+                "ignore_points": ignore_points,
             },
         )
         return self._next(image_name)

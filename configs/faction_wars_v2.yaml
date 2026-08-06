@@ -40,6 +40,7 @@ nodes:
     target: FactionWarBanner.png
     offset: [50, 50]
     settle_seconds: 1
+    ignore_visited: true
     note: "Offset matches v1 click((x+50, y+50)). Cycle until none left."
     on_success: start_bottom_stage
     on_failure: swipe_reveal_left
@@ -62,7 +63,7 @@ nodes:
     action: PRESS_KEY
     target: esc
     settle_seconds: 1
-    on_success: open_multi
+    on_success: return_after_faction
 
   open_multi:
     action: CLICK_IMAGE
@@ -97,6 +98,17 @@ nodes:
     target: multiBattleComplete.png
     timeout_seconds: 120
     on_success: return_after_faction
+    on_failure: check_if_still_in_battle
+
+  check_if_still_in_battle:
+    action: WAIT_FOR_IMAGE
+    target: inBattle.png
+    timeout_seconds: 15
+    note: >-
+      If we timed out waiting for the complete screen, wait 15s to see if the pause button
+      reappears (bridging any gap between waves). If it does, we are still fighting!
+    on_success: await_complete_screen
+    on_failure: return_after_faction
 
   return_after_faction:
     action: PRESS_KEY
@@ -108,7 +120,7 @@ nodes:
   ensure_fw_screen:
     action: IMAGE_PRESENT
     target: factionWarsScreen.png
-    on_success: click_banner
+    on_success: swipe_reveal_right
     on_failure: return_after_faction
 
   swipe_reveal_left:
@@ -117,6 +129,7 @@ nodes:
     distance: 1400
     duration: 1.0
     settle_seconds: 1
+    clear_visited: true
     note: "v1 swipe_right(1400) to reveal left-side factions."
     on_success: click_banner_left
 
@@ -125,6 +138,8 @@ nodes:
     target: FactionWarBanner.png
     offset: [50, 50]
     settle_seconds: 1
+    ignore_visited: true
+    note: "Cycle left banners until none left."
     on_success: start_bottom_stage_left
     on_failure: done
 
@@ -146,7 +161,7 @@ nodes:
     action: PRESS_KEY
     target: esc
     settle_seconds: 1
-    on_success: open_multi_left
+    on_success: return_left
 
   open_multi_left:
     action: CLICK_IMAGE
@@ -181,6 +196,14 @@ nodes:
     target: multiBattleComplete.png
     timeout_seconds: 120
     on_success: return_left
+    on_failure: check_if_still_in_battle_left
+
+  check_if_still_in_battle_left:
+    action: WAIT_FOR_IMAGE
+    target: inBattle.png
+    timeout_seconds: 15
+    on_success: await_complete_left
+    on_failure: return_left
 
   return_left:
     action: PRESS_KEY
@@ -191,7 +214,7 @@ nodes:
   ensure_fw_left:
     action: IMAGE_PRESENT
     target: factionWarsScreen.png
-    on_success: click_banner_left
+    on_success: swipe_reveal_left
     on_failure: return_left
 
   done:

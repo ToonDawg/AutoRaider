@@ -71,7 +71,8 @@ class ScreenshotScreen:
         delay: int = 1,
         match: str = "best",
         offset: tuple[int, int] = (0, 0),
-    ) -> bool:
+        ignore_points: list[tuple[int, int]] | None = None,
+    ) -> bool | tuple[int, int]:
         # match/offset are ignored in replay: we only care whether the template
         # is present on the current frame. Pixel-perfect multi-match selection
         # needs live locateAll, which FakeScreen covers in unit tests.

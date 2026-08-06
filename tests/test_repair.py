@@ -61,6 +61,8 @@ def _break_select_opponent(config_path: Path) -> None:
     """Point select_opponent at an asset that exists but will not match capture 05."""
     text = config_path.read_text(encoding="utf-8")
     broken = text.replace("target: arenaBattle.png", "target: bastion.png")
+    # Force an abort instead of the normal exit_cleanly flow
+    broken = broken.replace("on_failure: swipe_to_reveal_teams", "on_failure: null")
     assert broken != text
     config_path.write_text(broken, encoding="utf-8")
 

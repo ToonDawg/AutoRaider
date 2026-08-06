@@ -31,6 +31,7 @@ from utils.base_command import CommandBase
 from utils.command_factory import CommandFactory, CommandKeys
 from utils.click_handler import ClickHandler
 
+from utils.exceptions import CancellationException
 from utils.config_handler import ConfigHandler
 from utils.scheduler import TaskScheduler
 
@@ -279,6 +280,10 @@ class AutoRaider:
                 try:
                     self._process_commands(task_commands)
                     self.logger.info(f"All commands completed for task: {task_name}")
+                    if on_complete:
+                        self.tk_root.after(0, on_complete)
+                except CancellationException:
+                    self.logger.info(f"Task '{task_name}' cancelled by user.")
                     if on_complete:
                         self.tk_root.after(0, on_complete)
                 except Exception as e:

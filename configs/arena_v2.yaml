@@ -41,35 +41,94 @@ nodes:
     action: CLICK_IMAGE
     target: arenaBattle.png
     settle_seconds: 2
+    ignore_visited: true
     note: >-
       Clicks the best single match. v1 clicked every visible Battle button. Also
-      the loop's re-entry point; no on_failure, because an opponent list with no
-      Battle button on it is a screen we do not know how to continue from.
-    on_success: check_out_of_tokens
+      the loop's re-entry point. If no match is found, we scroll to reveal more.
+    on_success: start_battle
+    on_failure: swipe_to_reveal_teams
 
-  check_out_of_tokens:
+  swipe_to_reveal_teams:
+    action: SWIPE
+    target: up
+    distance: 400
+    duration: 0.5
+    settle_seconds: 1
+    note: >-
+      Scrolls the opponent list to reveal the bottom half (swipe up drags the screen content up).
+    on_success: correct_swipe_overshoot
+
+  correct_swipe_overshoot:
+    action: SWIPE
+    target: down
+    distance: 30
+    duration: 2.0
+    settle_seconds: 2
+    note: "v1 performs a small downward swipe to settle the scroll."
+    on_success: select_opponent_bottom
+
+  select_opponent_bottom:
+    action: CLICK_IMAGE
+    target: arenaBattle.png
+    settle_seconds: 2
+    ignore_visited: true
+    note: >-
+      Clicks a match on the bottom half. If exhausted, try to refresh.
+    on_success: start_battle
+    on_failure: refresh_opponents
+
+  refresh_opponents:
+    action: CLICK_IMAGE
+    target: arenaRefresh.png
+    settle_seconds: 2
+    clear_visited: true
+    note: >-
+      Clicks the refresh button if available. If on cooldown (not found),
+      we exit cleanly.
+    on_success: select_opponent
+    on_failure: exit_cleanly
+
+  start_battle:
+    action: CLICK_IMAGE
+    target: arenaStart.png
+    settle_seconds: 2
+    note: >-
+      Clicks start. This either begins the battle, OR triggers a token refill popup.
+    on_success: check_free_refill
+    on_failure: abort_hung_team
+
+  abort_hung_team:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 2
+    note: "If start button is missing, skip the team and return to list."
+    on_success: select_opponent
+
+  check_free_refill:
+    action: CLICK_IMAGE
+    target: arenaConfirm.png
+    settle_seconds: 1
+    note: >-
+      Check for the 'Confirm' button on the free refill popup and click it.
+      If it's found and clicked, loop back to start_battle.
+      If not found, we either have the gems popup or we are loading into battle.
+    on_success: start_battle
+    on_failure: check_gems_refill
+
+  check_gems_refill:
     action: IMAGE_PRESENT
     target: ArenaRefillGems.png
     note: >-
-      Guard against spending real gems, and the loop's exit condition. on_success
-      means the refill prompt IS on screen, which is a legitimate stop rather
-      than a failure. This target is not yet verified against a real screen —
-      capture 10 is outstanding — and every run now ends here, so it is
-      load-bearing. See Screenshots_Required.md.
+      If no confirm button, check if it's the Gems refill popup (which we want to escape).
+      If neither popup is found, we assume the battle started.
     on_success: leave_refill_prompt
-    on_failure: start_battle
+    on_failure: await_battle_end
 
   leave_refill_prompt:
     action: PRESS_KEY
     target: esc
     settle_seconds: 1
     on_success: null
-
-  start_battle:
-    action: CLICK_IMAGE
-    target: arenaStart.png
-    settle_seconds: 1
-    on_success: await_battle_end
 
   await_battle_end:
     action: WAIT_FOR_IMAGE
@@ -93,3 +152,10 @@ nodes:
       Closes the loop. Back on the opponent list, fight again; tokens are what
       stop us, not a count.
     on_success: select_opponent
+
+  exit_cleanly:
+    action: PRESS_KEY
+    target: esc
+    settle_seconds: 1
+    note: "Harmless ESC to exit cleanly (outcome=COMPLETED) so we don't crash dump on exhaustion."
+    on_success: null
